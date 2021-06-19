@@ -1,4 +1,4 @@
-package tests
+package e2e
 
 import (
 	"context"
@@ -52,8 +52,8 @@ type Cfg struct {
 	}
 }
 
-func SetupTests(t *testing.T) (Cfg, *database.Repository, *log.Logger) {
-	infolog := log.New(os.Stderr, "TEST : ", log.LstdFlags|log.Lmicroseconds|log.Lshortfile)
+func setupTests(t *testing.T) (Cfg, *database.Repository, func(), *log.Logger) {
+	infolog := log.New(os.Stderr, "E2E TEST : ", log.LstdFlags|log.Lmicroseconds|log.Lshortfile)
 
 	var cfg Cfg
 
@@ -69,12 +69,12 @@ func SetupTests(t *testing.T) (Cfg, *database.Repository, *log.Logger) {
 		infolog.Fatal(err, "error: parsing config")
 	}
 
-	repo := NewIntegration(t, cfg)
+	repo, rClose := newTestRepository(t, cfg)
 
-	return cfg, repo, infolog
+	return cfg, repo, rClose, infolog
 }
 
-func NewIntegration(t *testing.T, cfg Cfg) *database.Repository {
+func newTestRepository(t *testing.T, cfg Cfg) (*database.Repository, func()) {
 	ctx := context.Background()
 
 	postgresPort := nat.Port("5432/tcp")
@@ -101,7 +101,7 @@ func NewIntegration(t *testing.T, cfg Cfg) *database.Repository {
 	// MappedPort gets the externally mapped port for the container
 	hostPort, err := postgres.MappedPort(ctx, postgresPort)
 	if err != nil {
-		log.Fatal("map:", err)
+		t.Fatal("map:", err)
 	}
 
 	repo, rClose, err := database.NewRepository(database.Config{
@@ -114,9 +114,8 @@ func NewIntegration(t *testing.T, cfg Cfg) *database.Repository {
 	if err != nil {
 		t.Fatal(err, "connecting to db")
 	}
-	defer rClose()
 
-	log.Printf("Postgres container started, running at:  %s\n", repo.URL.String())
+	t.Logf("Postgres container started, running at:  %s\n", repo.URL.String())
 
 	if err := schema.Migrate(repo.URL.String()); err != nil {
 		t.Fatal(err)
@@ -134,7 +133,7 @@ func NewIntegration(t *testing.T, cfg Cfg) *database.Repository {
 	if err := schema.Seed(repo.DB, "projects"); err != nil {
 		t.Fatal(err)
 	}
-	return repo
+	return repo, rClose
 }
 
 type Test struct {
@@ -145,7 +144,7 @@ type Test struct {
 	Auth0ClientSecret string
 }
 
-func (t *Test) Token(username, password string) string {
+func (t *Test) token(username, password string) string {
 	const TokenNotFound = "could not retrieve access token"
 
 	urlStr := fmt.Sprintf("https://%s/oauth/token", t.Auth0Domain)
