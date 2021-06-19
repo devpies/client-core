@@ -1,4 +1,4 @@
-package tests
+package e2e
 
 import (
 	"encoding/json"
@@ -19,8 +19,8 @@ func TestTeams(t *testing.T) {
 		t.Skip()
 	}
 
-	cfg, repo, logger := SetupTests(t)
-	defer repo.Close()
+	cfg, repo, rClose, logger := setupTests(t)
+	defer rClose()
 
 	test := Test{
 		t:                 t,
@@ -37,7 +37,7 @@ func TestTeams(t *testing.T) {
 			cfg.Web.AuthAudience, cfg.Web.AuthDomain, cfg.Web.AuthMAPIAudience, cfg.Web.AuthM2MClient,
 			cfg.Web.AuthM2MSecret, cfg.Web.SendgridAPIKey, nil),
 
-		userToken: test.Token("testuser@devpie.io", "devpie12345!"),
+		userToken: test.token("testuser@devpie.io", "devpie12345!"),
 	}
 
 	t.Run("getTeams200", tm.getTeams200)
