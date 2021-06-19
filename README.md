@@ -7,7 +7,12 @@
 This is an experimental project for learning.
 
 Devpie Client is a business management tool for performing software development with clients. Features will include
-kanaban or agile style board management and auxiliary services like cost estimation, payments and more.
+kanban or agile style board management and auxiliary services like cost estimation, payments and more.
+
+- [See Figma design](https://www.figma.com/file/M0FVvRZWGUPWgJlby4UPjm/Devpie-Client?node-id=237%3A16)
+- [See Frontend repository](https://github.com/devpies/devpie-client-app)
+- [See Events repository](https://github.com/devpies/devpie-client-events)
+- [See Infrastructure repository](https://github.com/devpies/devpie-client-infra)
 
 - [See Figma design](https://www.figma.com/file/M0FVvRZWGUPWgJlby4UPjm/Devpie-Client?node-id=237%3A16)
 - [See Frontend repository](https://github.com/devpies/devpie-client-app)
@@ -20,7 +25,6 @@ kanaban or agile style board management and auxiliary services like cost estimat
 
 - [Docker and Kubernetes](https://docs.docker.com/desktop/)
 - [Tilt](https://tilt.dev/)
-
 - AWS
 - Sengrid
 - Freshbooks
@@ -33,13 +37,14 @@ kanaban or agile style board management and auxiliary services like cost estimat
 `core/{service}/.env` is required for integration tests.  Rename `core/{service}/.env.sample` and provide plaintext secrets.
 
 `.gitpass` is required for private go modules but currently all repositories are public. Rename `core/.gitpass.sample` 
+
 and provide a github username and access token.
 
 There's a `secrets.zip` for the team. Just Ask.
 
 ## Developement
 
-Run front and back ends simultaneously. For faster development we don't run the [devpie-client-app](https://github.com/ivorscott/devpie-client-app) 
+Run front and back ends simultaneously. For faster development we don't run the [devpie-client-app](https://github.com/ivorscott/devpie-client-app)
 in a container/pod. However, we use [tilt.dev](https://tilt.dev) to manage kubernetes development in the backend.
 
 ```bash
