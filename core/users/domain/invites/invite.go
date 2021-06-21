@@ -16,7 +16,7 @@ var (
 	ErrNotFound = errors.New("invite not found")
 )
 
-func Create(ctx context.Context, repo *database.Repository, ni NewInvite, now time.Time) (Invite, error) {
+func Create(ctx context.Context, repo database.DataStorer, ni NewInvite, now time.Time) (Invite, error) {
 	i := Invite{
 		ID:         uuid.New().String(),
 		UserID:     ni.UserID,
@@ -28,7 +28,7 @@ func Create(ctx context.Context, repo *database.Repository, ni NewInvite, now ti
 		CreatedAt:  now.UTC(),
 	}
 
-	stmt := repo.SQ.Insert(
+	stmt := repo.Insert(
 		"invites",
 	).SetMap(map[string]interface{}{
 		"invite_id":  i.ID,
@@ -48,10 +48,10 @@ func Create(ctx context.Context, repo *database.Repository, ni NewInvite, now ti
 	return i, nil
 }
 
-func RetrieveInvite(ctx context.Context, repo *database.Repository, uid string, iid string) (Invite, error) {
+func RetrieveInvite(ctx context.Context, repo database.DataStorer, uid string, iid string) (Invite, error) {
 	var i Invite
 
-	stmt := repo.SQ.Select(
+	stmt := repo.Select(
 		"invite_id",
 		"user_id",
 		"team_id",
@@ -69,7 +69,7 @@ func RetrieveInvite(ctx context.Context, repo *database.Repository, uid string, 
 		return i, errors.Wrapf(err, "building query: %v", args)
 	}
 
-	err = repo.DB.QueryRowxContext(ctx, q, uid, iid).StructScan(&i)
+	err = repo.QueryRowxContext(ctx, q, uid, iid).StructScan(&i)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return i, ErrNotFound
@@ -80,10 +80,10 @@ func RetrieveInvite(ctx context.Context, repo *database.Repository, uid string, 
 	return i, nil
 }
 
-func RetrieveInvites(ctx context.Context, repo *database.Repository, uid string) ([]Invite, error) {
+func RetrieveInvites(ctx context.Context, repo database.DataStorer, uid string) ([]Invite, error) {
 	var is []Invite
 
-	stmt := repo.SQ.Select(
+	stmt := repo.Select(
 		"invite_id",
 		"user_id",
 		"team_id",
@@ -101,7 +101,7 @@ func RetrieveInvites(ctx context.Context, repo *database.Repository, uid string)
 		return nil, errors.Wrapf(err, "building query: %v", args)
 	}
 
-	if err := repo.DB.SelectContext(ctx, &is, q, uid); err != nil {
+	if err := repo.SelectContext(ctx, &is, q, uid); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, ErrNotFound
 		}
@@ -111,7 +111,7 @@ func RetrieveInvites(ctx context.Context, repo *database.Repository, uid string)
 	return is, nil
 }
 
-func Update(ctx context.Context, repo *database.Repository, update UpdateInvite, uid, iid string, now time.Time) (Invite, error) {
+func Update(ctx context.Context, repo database.DataStorer, update UpdateInvite, uid, iid string, now time.Time) (Invite, error) {
 	var iv Invite
 
 	i, err := RetrieveInvite(ctx, repo, uid, iid)
@@ -122,7 +122,7 @@ func Update(ctx context.Context, repo *database.Repository, update UpdateInvite,
 	i.Accepted = update.Accepted
 	i.UpdatedAt = now.UTC()
 
-	stmt := repo.SQ.Update(
+	stmt := repo.Update(
 		"invites",
 	).SetMap(map[string]interface{}{
 		"read":       true,

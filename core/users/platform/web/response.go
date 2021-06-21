@@ -9,6 +9,8 @@ import (
 )
 
 func Respond(ctx context.Context, w http.ResponseWriter, val interface{}, statusCode int) error {
+	// TODO: fix failure during short tests. e2e still work after refactor
+
 	v := ctx.Value(KeyValues).(*Values)
 	v.StatusCode = statusCode
 

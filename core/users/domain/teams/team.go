@@ -17,7 +17,7 @@ var (
 	ErrInvalidID = errors.New("id provided was not a valid UUID")
 )
 
-func Create(ctx context.Context, repo *database.Repository, nt NewTeam, uid string, now time.Time) (Team, error) {
+func Create(ctx context.Context, repo database.DataStorer, nt NewTeam, uid string, now time.Time) (Team, error) {
 	t := Team{
 		ID:        uuid.New().String(),
 		Name:      nt.Name,
@@ -26,7 +26,7 @@ func Create(ctx context.Context, repo *database.Repository, nt NewTeam, uid stri
 		CreateAt:  now.UTC(),
 	}
 
-	stmt := repo.SQ.Insert(
+	stmt := repo.Insert(
 		"teams",
 	).SetMap(map[string]interface{}{
 		"team_id":    t.ID,
@@ -43,14 +43,14 @@ func Create(ctx context.Context, repo *database.Repository, nt NewTeam, uid stri
 	return t, nil
 }
 
-func Retrieve(ctx context.Context, repo *database.Repository, tid string) (Team, error) {
+func Retrieve(ctx context.Context, repo database.DataStorer, tid string) (Team, error) {
 	var t Team
 
 	if _, err := uuid.Parse(tid); err != nil {
 		return t, ErrInvalidID
 	}
 
-	stmt := repo.SQ.Select(
+	stmt := repo.Select(
 		"team_id",
 		"user_id",
 		"name",
@@ -65,7 +65,7 @@ func Retrieve(ctx context.Context, repo *database.Repository, tid string) (Team,
 		return t, errors.Wrapf(err, "building query: %v", args)
 	}
 
-	if err := repo.DB.GetContext(ctx, &t, q, tid); err != nil {
+	if err := repo.GetContext(ctx, &t, q, tid); err != nil {
 		if err == sql.ErrNoRows {
 			return t, ErrNotFound
 		}
@@ -75,14 +75,14 @@ func Retrieve(ctx context.Context, repo *database.Repository, tid string) (Team,
 	return t, nil
 }
 
-func List(ctx context.Context, repo *database.Repository, uid string) ([]Team, error) {
+func List(ctx context.Context, repo database.DataStorer, uid string) ([]Team, error) {
 	var ts []Team
 
 	if _, err := uuid.Parse(uid); err != nil {
 		return ts, ErrInvalidID
 	}
 
-	stmt := repo.SQ.Select(
+	stmt := repo.Select(
 		"team_id",
 		"user_id",
 		"name",
@@ -97,7 +97,7 @@ func List(ctx context.Context, repo *database.Repository, uid string) ([]Team, e
 		return ts, errors.Wrapf(err, "building query: %v", args)
 	}
 
-	if err := repo.DB.SelectContext(ctx, &ts, q, uid); err != nil {
+	if err := repo.SelectContext(ctx, &ts, q, uid); err != nil {
 		if err == sql.ErrNoRows {
 			return ts, ErrNotFound
 		}

@@ -26,7 +26,7 @@ import (
 )
 
 type Team struct {
-	repo        *database.Repository
+	repo        database.DataStorer
 	log         *log.Logger
 	auth0       *auth0.Auth0
 	nats        *events.Client
@@ -38,7 +38,7 @@ func (t *Team) Create(w http.ResponseWriter, r *http.Request) error {
 	var nt teams.NewTeam
 	var role memberships.Role = memberships.Administrator
 
-	uid := t.auth0.GetUserByID(r)
+	uid := t.auth0.GetUserByID(r.Context())
 
 	if err := web.Decode(r, &nt); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -142,7 +142,7 @@ func (t *Team) Create(w http.ResponseWriter, r *http.Request) error {
 func (t *Team) AssignExisting(w http.ResponseWriter, r *http.Request) error {
 	tid := chi.URLParam(r, "tid")
 	pid := chi.URLParam(r, "pid")
-	uid := t.auth0.GetUserByID(r)
+	uid := t.auth0.GetUserByID(r.Context())
 
 	tm, err := teams.Retrieve(r.Context(), t.repo, tid)
 	if err != nil {
@@ -193,7 +193,7 @@ func (t *Team) AssignExisting(w http.ResponseWriter, r *http.Request) error {
 func (t *Team) LeaveTeam(w http.ResponseWriter, r *http.Request) error {
 	tid := chi.URLParam(r, "tid")
 
-	uid := t.auth0.GetUserByID(r)
+	uid := t.auth0.GetUserByID(r.Context())
 
 	// if user is the administrator
 	// and is the last to leave
@@ -256,7 +256,7 @@ func (t *Team) Retrieve(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (t *Team) List(w http.ResponseWriter, r *http.Request) error {
-	uid := t.auth0.GetUserByID(r)
+	uid := t.auth0.GetUserByID(r.Context())
 
 	tms, err := teams.List(r.Context(), t.repo, uid)
 	if err != nil {
@@ -275,6 +275,8 @@ func (t *Team) List(w http.ResponseWriter, r *http.Request) error {
 
 func (t *Team) CreateInvite(w http.ResponseWriter, r *http.Request) error {
 	var list invites.NewList
+	var query users.UserQueries
+
 	tid := chi.URLParam(r, "tid")
 	link := strings.Split(t.origins, ",")[0]
 
@@ -309,7 +311,7 @@ func (t *Team) CreateInvite(w http.ResponseWriter, r *http.Request) error {
 			TeamID: tid,
 		}
 		// when user exists
-		u, err := users.RetrieveByEmail(t.repo, email)
+		u, err := query.RetrieveByEmail(t.repo, email)
 		if err != nil {
 			var au auth0.AuthUser
 
@@ -328,7 +330,7 @@ func (t *Team) CreateInvite(w http.ResponseWriter, r *http.Request) error {
 
 			var us users.User
 
-			us, err = users.Create(r.Context(), t.repo, nu, au.Auth0ID, time.Now())
+			us, err = query.Create(r.Context(), t.repo, nu, au.Auth0ID, time.Now())
 			if err != nil {
 				return err
 			}
@@ -362,7 +364,7 @@ func (t *Team) CreateInvite(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (t *Team) RetrieveInvites(w http.ResponseWriter, r *http.Request) error {
-	uid := t.auth0.GetUserByID(r)
+	uid := t.auth0.GetUserByID(r.Context())
 
 	is, err := invites.RetrieveInvites(r.Context(), t.repo, uid)
 	if err != nil {
@@ -403,7 +405,7 @@ func (t *Team) UpdateInvite(w http.ResponseWriter, r *http.Request) error {
 	var update invites.UpdateInvite
 	var role memberships.Role = memberships.Editor
 
-	uid := t.auth0.GetUserByID(r)
+	uid := t.auth0.GetUserByID(r.Context())
 	tid := chi.URLParam(r, "tid")
 	iid := chi.URLParam(r, "iid")
 

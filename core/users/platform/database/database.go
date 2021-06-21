@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"net/url"
 	"os"
@@ -23,9 +24,17 @@ type Config struct {
 }
 
 type Repository struct {
-	DB  *sqlx.DB
-	SQ  squirrel.StatementBuilderType
+	Storer
+	Squirrler
 	URL url.URL
+}
+
+type Data struct {
+	*sqlx.DB
+}
+
+type SQ struct {
+	squirrel.StatementBuilderType
 }
 
 // NewRepository creates a new Directory, connecting it to the postgres server
@@ -56,16 +65,16 @@ func NewRepository(cfg Config) (*Repository, func(), error) {
 	}
 
 	r := &Repository{
-		DB:  db,
-		SQ:  squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar).RunWith(db),
+		Storer: db,
+		Squirrler: squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar).RunWith(db),
 		URL: u,
 	}
 
-	return r, r.Close, nil
+	return r, r.CloseFunc, nil
 }
 
-func (d *Repository) Close() {
-	err := d.DB.Close()
+func (d *Repository) CloseFunc() {
+	err := d.Storer.Close()
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -74,7 +83,7 @@ func (d *Repository) Close() {
 
 // StatusCheck returns nil if it can successfully talk to the database. It
 // returns a non-nil error otherwise.
-func StatusCheck(ctx context.Context, db *sqlx.DB) error {
+func StatusCheck(ctx context.Context, db DataStorer) error {
 
 	// Run a simple query to determine connectivity. The db has a "Ping" method
 	// but it can false-positive when it was previously able to talk to the
@@ -82,5 +91,50 @@ func StatusCheck(ctx context.Context, db *sqlx.DB) error {
 	// round trip to the database.
 	const q = `SELECT true`
 	var tmp bool
-	return db.QueryRowContext(ctx, q).Scan(&tmp)
+	return db.QueryRowxContext(ctx, q).Scan(&tmp)
+}
+
+type DataStorer interface {
+	Storer
+	Squirrler
+}
+
+type Squirrler interface {
+	Select(columns ...string) squirrel.SelectBuilder
+	Insert(into string) squirrel.InsertBuilder
+	Replace(into string) squirrel.InsertBuilder
+	Update(table string) squirrel.UpdateBuilder
+	Delete(from string) squirrel.DeleteBuilder
+	PlaceholderFormat(f squirrel.PlaceholderFormat) squirrel.StatementBuilderType
+	RunWith(runner squirrel.BaseRunner) squirrel.StatementBuilderType
+}
+
+type Storer interface {
+	DriverName() string
+	MapperFunc(mf func(string) string)
+	Rebind(query string) string
+	Unsafe() *sqlx.DB
+	BindNamed(query string, arg interface{}) (string, []interface{}, error)
+	NamedQuery(query string, arg interface{}) (*sqlx.Rows, error)
+	NamedExec(query string, arg interface{}) (sql.Result, error)
+	Get(dest interface{}, query string, args ...interface{}) error
+	MustBegin() *sqlx.Tx
+	Beginx() (*sqlx.Tx, error)
+	Queryx(query string, args ...interface{}) (*sqlx.Rows, error)
+	QueryRowx(query string, args ...interface{}) *sqlx.Row
+	MustExec(query string, args ...interface{}) sql.Result
+	Preparex(query string) (*sqlx.Stmt, error)
+	PrepareNamed(query string) (*sqlx.NamedStmt, error)
+	PrepareNamedContext(ctx context.Context, query string) (*sqlx.NamedStmt, error)
+	NamedQueryContext(ctx context.Context, query string, arg interface{}) (*sqlx.Rows, error)
+	NamedExecContext(ctx context.Context, query string, arg interface{}) (sql.Result, error)
+	SelectContext(ctx context.Context, dest interface{}, query string, args ...interface{}) error
+	GetContext(ctx context.Context, dest interface{}, query string, args ...interface{}) error
+	PreparexContext(ctx context.Context, query string) (*sqlx.Stmt, error)
+	QueryxContext(ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error)
+	QueryRowxContext(ctx context.Context, query string, args ...interface{}) *sqlx.Row
+	MustBeginTx(ctx context.Context, opts *sql.TxOptions) *sqlx.Tx
+	MustExecContext(ctx context.Context, query string, args ...interface{}) sql.Result
+	BeginTxx(ctx context.Context, opts *sql.TxOptions) (*sqlx.Tx, error)
+	Close() error
 }
