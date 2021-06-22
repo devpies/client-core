@@ -33,7 +33,7 @@ RUN go env
 
 FROM reload as dev
 
-RUN go build -o main . && go test ./... -short
+RUN go build -o main .
 
 CMD ["./main"]
 
