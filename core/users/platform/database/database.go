@@ -24,8 +24,8 @@ type Config struct {
 }
 
 type Repository struct {
-	Storer
-	Squirrler
+	SqlxStorer
+	Squirreler
 	URL url.URL
 }
 
@@ -57,8 +57,8 @@ func NewRepository(cfg Config) (*Repository, func(), error) {
 	}
 
 	r := &Repository{
-		Storer: db,
-		Squirrler: squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar).RunWith(db),
+		SqlxStorer: db,
+		Squirreler: squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar).RunWith(db),
 		URL: u,
 	}
 
@@ -66,7 +66,7 @@ func NewRepository(cfg Config) (*Repository, func(), error) {
 }
 
 func (d *Repository) CloseFunc() {
-	err := d.Storer.Close()
+	err := d.SqlxStorer.Close()
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -87,11 +87,11 @@ func StatusCheck(ctx context.Context, db DataStorer) error {
 }
 
 type DataStorer interface {
-	Storer
-	Squirrler
+	SqlxStorer
+	Squirreler
 }
 
-type Squirrler interface {
+type Squirreler interface {
 	Select(columns ...string) squirrel.SelectBuilder
 	Insert(into string) squirrel.InsertBuilder
 	Replace(into string) squirrel.InsertBuilder
@@ -101,7 +101,7 @@ type Squirrler interface {
 	RunWith(runner squirrel.BaseRunner) squirrel.StatementBuilderType
 }
 
-type Storer interface {
+type SqlxStorer interface {
 	DriverName() string
 	MapperFunc(mf func(string) string)
 	Rebind(query string) string
