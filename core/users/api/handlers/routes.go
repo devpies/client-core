@@ -6,6 +6,7 @@ import (
 	"os"
 
 	mid "github.com/devpies/devpie-client-core/users/api/middleware"
+	"github.com/devpies/devpie-client-core/users/domain/users"
 	"github.com/devpies/devpie-client-core/users/platform/auth0"
 	"github.com/devpies/devpie-client-core/users/platform/database"
 	"github.com/devpies/devpie-client-core/users/platform/web"
@@ -29,9 +30,9 @@ func API(shutdown chan os.Signal, repo database.DataStorer, log *log.Logger, ori
 	h := HealthCheck{repo: repo}
 
 	app.Handle(http.MethodGet, "/api/v1/health", h.Health)
-
-	u := Users{repo, log, a0, origins}
-	tm := Team{repo, log, a0, nats, origins, sendgridKey}
+	queries := &users.Queries{}
+	u := Users{repo, log, a0, origins, queries}
+	tm := Team{repo, log, a0, nats, origins, sendgridKey, queries}
 	m := Memberships{repo, log, a0, nats}
 
 	app.Handle(http.MethodPost, "/api/v1/users", u.Create)
