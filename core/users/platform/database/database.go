@@ -75,7 +75,7 @@ func (d *Repository) CloseFunc() {
 
 // StatusCheck returns nil if it can successfully talk to the database. It
 // returns a non-nil error otherwise.
-func StatusCheck(ctx context.Context, db DataStorer) error {
+func StatusCheck(ctx context.Context, db Storer) error {
 
 	// Run a simple query to determine connectivity. The db has a "Ping" method
 	// but it can false-positive when it was previously able to talk to the
@@ -86,7 +86,7 @@ func StatusCheck(ctx context.Context, db DataStorer) error {
 	return db.QueryRowxContext(ctx, q).Scan(&tmp)
 }
 
-type DataStorer interface {
+type Storer interface {
 	SqlxStorer
 	Squirreler
 }

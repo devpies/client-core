@@ -16,7 +16,7 @@ var (
 	ErrInvalidID = errors.New("id provided was not a valid UUID")
 )
 
-func Retrieve(ctx context.Context, repo database.DataStorer, pid string) (ProjectCopy, error) {
+func Retrieve(ctx context.Context, repo database.Storer, pid string) (ProjectCopy, error) {
 	var p ProjectCopy
 
 	if _, err := uuid.Parse(pid); err != nil {
@@ -80,7 +80,7 @@ func Create(ctx context.Context, repo *database.Repository, p ProjectCopy) error
 	return nil
 }
 
-func Update(ctx context.Context, repo database.DataStorer, pid string, update UpdateProjectCopy) error {
+func Update(ctx context.Context, repo database.Storer, pid string, update UpdateProjectCopy) error {
 	p, err := Retrieve(ctx, repo, pid)
 	if err != nil {
 		return err
@@ -125,7 +125,7 @@ func Update(ctx context.Context, repo database.DataStorer, pid string, update Up
 	return nil
 }
 
-func Delete(ctx context.Context, repo database.DataStorer, pid string) error {
+func Delete(ctx context.Context, repo database.Storer, pid string) error {
 	if _, err := uuid.Parse(pid); err != nil {
 		return ErrInvalidID
 	}

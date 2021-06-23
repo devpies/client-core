@@ -8,7 +8,7 @@ import (
 )
 
 type HealthCheck struct {
-	repo database.DataStorer
+	repo database.Storer
 }
 
 func (c *HealthCheck) Health(w http.ResponseWriter, r *http.Request) error {

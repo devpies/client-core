@@ -26,7 +26,7 @@ import (
 )
 
 type Team struct {
-	repo        database.DataStorer
+	repo        database.Storer
 	log         *log.Logger
 	auth0       *auth0.Auth0
 	nats        *events.Client
