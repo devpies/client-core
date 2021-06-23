@@ -19,7 +19,7 @@ var (
 )
 
 type Querier interface {
-	Create(ctx context.Context, repo database.Storer, nu NewUser, aid string, now time.Time) (User, error)
+	Create(ctx context.Context, repo database.Storer, nu NewUser, now time.Time) (User, error)
 	RetrieveByEmail(repo database.Storer, email string) (User, error)
 	RetrieveMe(ctx context.Context, repo database.Storer, uid string) (User, error)
 	RetrieveMeByAuthID(ctx context.Context, repo database.Storer, aid string) (User, error)
@@ -27,10 +27,10 @@ type Querier interface {
 
 type Queries struct{}
 
-func (q *Queries) Create(ctx context.Context, repo database.Storer, nu NewUser, aid string, now time.Time) (User, error) {
+func (q *Queries) Create(ctx context.Context, repo database.Storer, nu NewUser, now time.Time) (User, error) {
 	u := User{
 		ID:            uuid.New().String(),
-		Auth0ID:       aid,
+		Auth0ID:       nu.Auth0ID,
 		Email:         nu.Email,
 		EmailVerified: nu.EmailVerified,
 		FirstName:     nu.FirstName,

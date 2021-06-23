@@ -32,7 +32,6 @@ type Team struct {
 	nats        *events.Client
 	origins     string
 	sendgridKey string
-	query       users.Querier
 }
 
 func (t *Team) Create(w http.ResponseWriter, r *http.Request) error {
@@ -276,7 +275,7 @@ func (t *Team) List(w http.ResponseWriter, r *http.Request) error {
 
 func (t *Team) CreateInvite(w http.ResponseWriter, r *http.Request) error {
 	var list invites.NewList
-
+	q := &users.Queries{} // TODO: move during Team unit tests
 	tid := chi.URLParam(r, "tid")
 	link := strings.Split(t.origins, ",")[0]
 
@@ -311,7 +310,7 @@ func (t *Team) CreateInvite(w http.ResponseWriter, r *http.Request) error {
 			TeamID: tid,
 		}
 		// when user exists
-		u, err := t.query.RetrieveByEmail(t.repo, email)
+		u, err := q.RetrieveByEmail(t.repo, email)
 		if err != nil {
 			var au auth0.AuthUser
 
@@ -330,7 +329,7 @@ func (t *Team) CreateInvite(w http.ResponseWriter, r *http.Request) error {
 
 			var us users.User
 
-			us, err = t.query.Create(r.Context(), t.repo, nu, au.Auth0ID, time.Now())
+			us, err = q.Create(r.Context(), t.repo, nu, time.Now())
 			if err != nil {
 				return err
 			}
