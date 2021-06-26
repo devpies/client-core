@@ -29,7 +29,7 @@ import (
 type Team struct {
 	repo        database.Storer
 	log         *log.Logger
-	auth0       *auth0.Auth0
+	auth0       auth0.Auther
 	nats        *events.Client
 	origins     string
 	sendgridKey string
@@ -68,14 +68,14 @@ func (t *Team) Create(w http.ResponseWriter, r *http.Request) error {
 	var nt teams.NewTeam
 	var role memberships.Role = memberships.Administrator
 
-	uid := t.auth0.UserByID(r.Context())
+	uid := t.auth0.UserByID(r.Context()) // mock
 
 	if err := web.Decode(r, &nt); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return err
 	}
 
-	if _, err := t.query.project.Retrieve(r.Context(), t.repo, nt.ProjectID); err != nil {
+	if _, err := t.query.project.Retrieve(r.Context(), t.repo, nt.ProjectID); err != nil { //mock
 		switch err {
 		case projects.ErrNotFound:
 			return web.NewRequestError(err, http.StatusNotFound)
@@ -86,7 +86,7 @@ func (t *Team) Create(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 
-	tm, err := t.query.team.Create(r.Context(), t.repo, nt, uid, time.Now())
+	tm, err := t.query.team.Create(r.Context(), t.repo, nt, uid, time.Now()) // mock
 	if err != nil {
 		return err
 	}
@@ -97,76 +97,55 @@ func (t *Team) Create(w http.ResponseWriter, r *http.Request) error {
 		Role:   role.String(),
 	}
 
-	m, err := t.query.membership.Create(r.Context(), t.repo, nm, time.Now())
+	m, err := t.query.membership.Create(r.Context(), t.repo, nm, time.Now()) // mock
 	if err != nil {
 		return err
 	}
 
-	if nt.ProjectID == "" {
-		// TODO: remove, no longer creating team outside of project context
-		e := events.MembershipCreatedEvent{
-			ID:   uuid.New().String(),
-			Type: events.TypeMembershipCreated,
-			Data: events.MembershipCreatedEventData{
-				MembershipID: m.ID,
-				TeamID:       m.TeamID,
-				Role:         m.Role,
-				UserID:       m.UserID,
-				UpdatedAt:    m.UpdatedAt.String(),
-				CreatedAt:    m.CreatedAt.String(),
-			},
-			Metadata: events.Metadata{
-				TraceID: uuid.New().String(),
-				UserID:  uid,
-			},
-		}
+	up := projects.UpdateProjectCopy{
+		TeamID: &tm.ID,
+	}
 
-		bytes, err := json.Marshal(e)
-		if err != nil {
-			return err
-		}
+	if err := t.query.project.Update(r.Context(), t.repo, nt.ProjectID, up); err != nil {
+		return err
+	} // mock
 
-		if t.nats != nil {
-			t.nats.Publish(string(events.EventsMembershipCreated), bytes)
-		}
-	} else {
-		e := events.MembershipCreatedForProjectEvent{
-			ID:   uuid.New().String(),
-			Type: events.TypeMembershipCreatedForProject,
-			Data: events.MembershipCreatedForProjectEventData{
-				MembershipID: m.ID,
-				TeamID:       m.TeamID,
-				Role:         m.Role,
-				UserID:       m.UserID,
-				ProjectID:    nt.ProjectID,
-				UpdatedAt:    m.UpdatedAt.String(),
-				CreatedAt:    m.CreatedAt.String(),
-			},
-			Metadata: events.Metadata{
-				TraceID: uuid.New().String(),
-				UserID:  uid,
-			},
-		}
-
-		up := projects.UpdateProjectCopy{
-			TeamID: &tm.ID,
-		}
-
-		if err := t.query.project.Update(r.Context(), t.repo, nt.ProjectID, up); err != nil {
-			return err
-		}
-
-		bytes, err := json.Marshal(e)
-		if err != nil {
-			return err
-		}
-
-		if t.nats != nil {
-			t.nats.Publish(string(events.EventsMembershipCreatedForProject), bytes)
-		}
+	err = t.PublishMembershipCreatedForProject(m, nt.ProjectID, uid)
+	if err != nil {
+		return err
 	}
 
 	return web.Respond(r.Context(), w, tm, http.StatusCreated)
+}
+
+func (t *Team)PublishMembershipCreatedForProject(m memberships.Membership, pid , uid string) error {
+	e := events.MembershipCreatedForProjectEvent{
+		ID:   uuid.New().String(),
+		Type: events.TypeMembershipCreatedForProject,
+		Data: events.MembershipCreatedForProjectEventData{
+			MembershipID: m.ID,
+			TeamID:       m.TeamID,
+			Role:         m.Role,
+			UserID:       m.UserID,
+			ProjectID:    pid,
+			UpdatedAt:    m.UpdatedAt.String(),
+			CreatedAt:    m.CreatedAt.String(),
+		},
+		Metadata: events.Metadata{
+			TraceID: uuid.New().String(),
+			UserID:  uid,
+		},
+	}
+
+	bytes, err := json.Marshal(e)
+	if err != nil {
+		return err
+	}
+
+	if t.nats != nil {
+		t.nats.Publish(string(events.EventsMembershipCreatedForProject), bytes) // mock
+	}
+	return nil
 }
 
 func (t *Team) AssignExisting(w http.ResponseWriter, r *http.Request) error {
@@ -196,11 +175,20 @@ func (t *Team) AssignExisting(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 
+	err = t.PublishProjectUpdateEvent(&tm.ID, pid,uid)
+	if err != nil {
+		return err
+	}
+
+	return web.Respond(r.Context(), w, nil, http.StatusOK)
+}
+
+func (t *Team) PublishProjectUpdateEvent(tid *string, pid, uid string) error {
 	ue := events.ProjectUpdatedEvent{
 		ID:   uuid.New().String(),
 		Type: events.TypeProjectUpdated,
 		Data: events.ProjectUpdatedEventData{
-			TeamID:    &tm.ID,
+			TeamID:    tid,
 			ProjectID: pid,
 			UpdatedAt: time.Now().UTC().String(),
 		},
@@ -216,22 +204,13 @@ func (t *Team) AssignExisting(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	t.nats.Publish(string(events.EventsProjectUpdated), bytes)
-
-	return web.Respond(r.Context(), w, nil, http.StatusOK)
+	return nil
 }
 
 func (t *Team) LeaveTeam(w http.ResponseWriter, r *http.Request) error {
 	tid := chi.URLParam(r, "tid")
 
 	uid := t.auth0.UserByID(r.Context())
-
-	// if user is the administrator
-	// and is the last to leave
-	// delete the team
-
-	// if the user is the administrator
-	// and is not the last to leave
-	// ownership must be passed to another member
 
 	mid, err := t.query.membership.Delete(r.Context(), t.repo, tid, uid)
 	if err != nil {
@@ -245,6 +224,15 @@ func (t *Team) LeaveTeam(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 
+	err = t.PublishMembershipDeleted(mid, uid)
+	if err != nil {
+		return err
+	}
+
+	return web.Respond(r.Context(), w, nil, http.StatusOK)
+}
+
+func (t *Team) PublishMembershipDeleted(mid, uid string) error {
 	me := events.MembershipDeletedEvent{
 		ID:   uuid.New().String(),
 		Type: events.TypeMembershipDeleted,
@@ -264,7 +252,7 @@ func (t *Team) LeaveTeam(w http.ResponseWriter, r *http.Request) error {
 
 	t.nats.Publish(string(events.EventsMembershipDeleted), bytes)
 
-	return web.Respond(r.Context(), w, nil, http.StatusOK)
+	return nil
 }
 
 func (t *Team) Retrieve(w http.ResponseWriter, r *http.Request) error {
@@ -459,32 +447,41 @@ func (t *Team) UpdateInvite(w http.ResponseWriter, r *http.Request) error {
 			return err
 		}
 
-		e := events.MembershipCreatedEvent{
-			ID:   uuid.New().String(),
-			Type: events.TypeMembershipCreated,
-			Data: events.MembershipCreatedEventData{
-				MembershipID: m.ID,
-				TeamID:       m.TeamID,
-				Role:         m.Role,
-				UserID:       m.UserID,
-				UpdatedAt:    m.UpdatedAt.String(),
-				CreatedAt:    m.CreatedAt.String(),
-			},
-			Metadata: events.Metadata{
-				TraceID: uuid.New().String(),
-				UserID:  uid,
-			},
-		}
-
-		bytes, err := json.Marshal(e)
+		err = t.PublishMembershipCreated(m, uid)
 		if err != nil {
 			return err
 		}
-
-		t.nats.Publish(string(events.EventsMembershipCreated), bytes)
 	}
 
 	return web.Respond(r.Context(), w, iv, http.StatusOK)
+}
+
+func(t *Team) PublishMembershipCreated(m memberships.Membership, uid string) error {
+	e := events.MembershipCreatedEvent{
+		ID:   uuid.New().String(),
+		Type: events.TypeMembershipCreated,
+		Data: events.MembershipCreatedEventData{
+			MembershipID: m.ID,
+			TeamID:       m.TeamID,
+			Role:         m.Role,
+			UserID:       m.UserID,
+			UpdatedAt:    m.UpdatedAt.String(),
+			CreatedAt:    m.CreatedAt.String(),
+		},
+		Metadata: events.Metadata{
+			TraceID: uuid.New().String(),
+			UserID:  uid,
+		},
+	}
+
+	bytes, err := json.Marshal(e)
+	if err != nil {
+		return err
+	}
+
+	t.nats.Publish(string(events.EventsMembershipCreated), bytes)
+
+	return nil
 }
 
 func (t *Team) SendMail(email, link string) error {
