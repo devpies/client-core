@@ -37,8 +37,9 @@ type Team struct {
 }
 
 type TeamQueries struct {
-	team    TeamQuerier
-	project ProjectQuerier
+	team       TeamQuerier
+	project    ProjectQuerier
+	membership MembershipQuerier
 }
 
 type TeamQuerier interface {
@@ -87,7 +88,7 @@ func (t *Team) Create(w http.ResponseWriter, r *http.Request) error {
 		Role:   role.String(),
 	}
 
-	m, err := memberships.Create(r.Context(), t.repo, nm, time.Now())
+	m, err := t.query.membership.Create(r.Context(), t.repo, nm, time.Now())
 	if err != nil {
 		return err
 	}
@@ -223,7 +224,7 @@ func (t *Team) LeaveTeam(w http.ResponseWriter, r *http.Request) error {
 	// and is not the last to leave
 	// ownership must be passed to another member
 
-	mid, err := memberships.Delete(r.Context(), t.repo, tid, uid)
+	mid, err := t.query.membership.Delete(r.Context(), t.repo, tid, uid)
 	if err != nil {
 		switch err {
 		case teams.ErrNotFound:
@@ -444,7 +445,7 @@ func (t *Team) UpdateInvite(w http.ResponseWriter, r *http.Request) error {
 			TeamID: tid,
 			Role:   role.String(),
 		}
-		m, err := memberships.Create(r.Context(), t.repo, nm, time.Now())
+		m, err := t.query.membership.Create(r.Context(), t.repo, nm, time.Now())
 		if err != nil {
 			return err
 		}
