@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -32,6 +33,17 @@ type Team struct {
 	nats        *events.Client
 	origins     string
 	sendgridKey string
+	query       TeamQueries
+}
+
+type TeamQueries struct {
+	team TeamQuerier
+}
+
+type TeamQuerier interface {
+	Create(ctx context.Context, repo database.Storer, nt teams.NewTeam, uid string, now time.Time) (teams.Team, error)
+	Retrieve(ctx context.Context, repo database.Storer, tid string) (teams.Team, error)
+	List(ctx context.Context, repo database.Storer, uid string) ([]teams.Team, error)
 }
 
 func (t *Team) Create(w http.ResponseWriter, r *http.Request) error {
@@ -56,7 +68,7 @@ func (t *Team) Create(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 
-	tm, err := teams.Create(r.Context(), t.repo, nt, uid, time.Now())
+	tm, err := t.query.team.Create(r.Context(), t.repo, nt, uid, time.Now())
 	if err != nil {
 		return err
 	}
@@ -144,7 +156,7 @@ func (t *Team) AssignExisting(w http.ResponseWriter, r *http.Request) error {
 	pid := chi.URLParam(r, "pid")
 	uid := t.auth0.UserByID(r.Context())
 
-	tm, err := teams.Retrieve(r.Context(), t.repo, tid)
+	tm, err := t.query.team.Retrieve(r.Context(), t.repo, tid)
 	if err != nil {
 		return web.NewRequestError(err, http.StatusNotFound)
 	}
@@ -240,7 +252,7 @@ func (t *Team) LeaveTeam(w http.ResponseWriter, r *http.Request) error {
 func (t *Team) Retrieve(w http.ResponseWriter, r *http.Request) error {
 	tid := chi.URLParam(r, "tid")
 
-	tm, err := teams.Retrieve(r.Context(), t.repo, tid)
+	tm, err := t.query.team.Retrieve(r.Context(), t.repo, tid)
 	if err != nil {
 		switch err {
 		case teams.ErrNotFound:
@@ -258,7 +270,7 @@ func (t *Team) Retrieve(w http.ResponseWriter, r *http.Request) error {
 func (t *Team) List(w http.ResponseWriter, r *http.Request) error {
 	uid := t.auth0.UserByID(r.Context())
 
-	tms, err := teams.List(r.Context(), t.repo, uid)
+	tms, err := t.query.team.List(r.Context(), t.repo, uid)
 	if err != nil {
 		switch err {
 		case teams.ErrNotFound:
@@ -379,7 +391,7 @@ func (t *Team) RetrieveInvites(w http.ResponseWriter, r *http.Request) error {
 
 	var res []invites.InviteEnhanced
 	for _, invite := range is {
-		team, err := teams.Retrieve(r.Context(), t.repo, invite.TeamID)
+		team, err := t.query.team.Retrieve(r.Context(), t.repo, invite.TeamID)
 		if err != nil {
 			return err
 		}

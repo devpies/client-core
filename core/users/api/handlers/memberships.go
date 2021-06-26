@@ -14,14 +14,14 @@ import (
 	"github.com/devpies/devpie-client-events/go/events"
 )
 
-type Memberships struct {
+type Membership struct {
 	repo  database.Storer
 	log   *log.Logger
 	auth0 *auth0.Auth0
 	nats  *events.Client
 }
 
-func (m *Memberships) RetrieveMembers(w http.ResponseWriter, r *http.Request) error {
+func (m *Membership) RetrieveMembers(w http.ResponseWriter, r *http.Request) error {
 	uid := m.auth0.UserByID(r.Context())
 
 	tid := chi.URLParam(r, "tid")
