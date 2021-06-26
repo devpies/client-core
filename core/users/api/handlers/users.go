@@ -66,7 +66,7 @@ func (u *Users) Create(w http.ResponseWriter, r *http.Request) error {
 		status = http.StatusCreated
 		user, err = u.query.Create(r.Context(), u.repo, nu, time.Now())
 		if err != nil {
-			return err
+			return errors.Wrapf(err, "failed to create user")
 		}
 	}
 
