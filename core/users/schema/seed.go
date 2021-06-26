@@ -2,14 +2,14 @@ package schema
 
 import (
 	"fmt"
-	"github.com/jmoiron/sqlx"
+	"github.com/devpies/devpie-client-core/users/platform/database"
 	"io/ioutil"
 )
 
 const folder = "/seeds/"
 const ext = ".sql"
 
-func Seed(db *sqlx.DB, filename string) error {
+func Seed(db database.SqlxStorer, filename string) error {
 	tx, err := db.Beginx()
 	if err != nil {
 		return err

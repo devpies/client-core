@@ -6,13 +6,14 @@ import (
 	"os"
 
 	mid "github.com/devpies/devpie-client-core/users/api/middleware"
+	"github.com/devpies/devpie-client-core/users/domain/users"
 	"github.com/devpies/devpie-client-core/users/platform/auth0"
 	"github.com/devpies/devpie-client-core/users/platform/database"
 	"github.com/devpies/devpie-client-core/users/platform/web"
 	"github.com/devpies/devpie-client-events/go/events"
 )
 
-func API(shutdown chan os.Signal, repo *database.Repository, log *log.Logger, origins string,
+func API(shutdown chan os.Signal, repo database.Storer, log *log.Logger, origins string,
 	auth0Audience, auth0Domain, auth0MAPIAudience, auth0M2MClient, auth0M2MSecret, sendgridKey string, nats *events.Client) http.Handler {
 
 	a0 := &auth0.Auth0{
@@ -29,8 +30,8 @@ func API(shutdown chan os.Signal, repo *database.Repository, log *log.Logger, or
 	h := HealthCheck{repo: repo}
 
 	app.Handle(http.MethodGet, "/api/v1/health", h.Health)
-
-	u := Users{repo, log, a0, origins}
+	queries := &users.Queries{}
+	u := Users{repo, log, a0, origins, queries}
 	tm := Team{repo, log, a0, nats, origins, sendgridKey}
 	m := Memberships{repo, log, a0, nats}
 
