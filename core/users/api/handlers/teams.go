@@ -37,13 +37,21 @@ type Team struct {
 }
 
 type TeamQueries struct {
-	team TeamQuerier
+	team    TeamQuerier
+	project ProjectQuerier
 }
 
 type TeamQuerier interface {
 	Create(ctx context.Context, repo database.Storer, nt teams.NewTeam, uid string, now time.Time) (teams.Team, error)
 	Retrieve(ctx context.Context, repo database.Storer, tid string) (teams.Team, error)
 	List(ctx context.Context, repo database.Storer, uid string) ([]teams.Team, error)
+}
+
+type ProjectQuerier interface {
+	Create(ctx context.Context, repo *database.Repository, p projects.ProjectCopy) error
+	Retrieve(ctx context.Context, repo database.Storer, pid string) (projects.ProjectCopy, error)
+	Update(ctx context.Context, repo database.Storer, pid string, update projects.UpdateProjectCopy) error
+	Delete(ctx context.Context, repo database.Storer, pid string) error
 }
 
 func (t *Team) Create(w http.ResponseWriter, r *http.Request) error {
@@ -57,7 +65,7 @@ func (t *Team) Create(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	if _, err := projects.Retrieve(r.Context(), t.repo, nt.ProjectID); err != nil {
+	if _, err := t.query.project.Retrieve(r.Context(), t.repo, nt.ProjectID); err != nil {
 		switch err {
 		case projects.ErrNotFound:
 			return web.NewRequestError(err, http.StatusNotFound)
@@ -134,7 +142,7 @@ func (t *Team) Create(w http.ResponseWriter, r *http.Request) error {
 			TeamID: &tm.ID,
 		}
 
-		if err := projects.Update(r.Context(), t.repo, nt.ProjectID, up); err != nil {
+		if err := t.query.project.Update(r.Context(), t.repo, nt.ProjectID, up); err != nil {
 			return err
 		}
 
@@ -166,7 +174,7 @@ func (t *Team) AssignExisting(w http.ResponseWriter, r *http.Request) error {
 		UpdatedAt: time.Now().UTC(),
 	}
 
-	err = projects.Update(r.Context(), t.repo, pid, up)
+	err = t.query.project.Update(r.Context(), t.repo, pid, up)
 	if err != nil {
 		switch err {
 		case projects.ErrNotFound:
