@@ -40,6 +40,7 @@ type TeamQueries struct {
 	team       TeamQuerier
 	project    ProjectQuerier
 	membership MembershipQuerier
+	user       UserQuerier
 }
 
 type TeamQuerier interface {
@@ -296,7 +297,7 @@ func (t *Team) List(w http.ResponseWriter, r *http.Request) error {
 
 func (t *Team) CreateInvite(w http.ResponseWriter, r *http.Request) error {
 	var list invites.NewList
-	q := &users.Queries{} // TODO: move during Team unit tests
+
 	tid := chi.URLParam(r, "tid")
 	link := strings.Split(t.origins, ",")[0]
 
@@ -331,7 +332,7 @@ func (t *Team) CreateInvite(w http.ResponseWriter, r *http.Request) error {
 			TeamID: tid,
 		}
 		// when user exists
-		u, err := q.RetrieveByEmail(t.repo, email)
+		u, err := t.query.user.RetrieveByEmail(t.repo, email)
 		if err != nil {
 			var au auth0.AuthUser
 
@@ -350,7 +351,7 @@ func (t *Team) CreateInvite(w http.ResponseWriter, r *http.Request) error {
 
 			var us users.User
 
-			us, err = q.Create(r.Context(), t.repo, nu, time.Now())
+			us, err = t.query.user.Create(r.Context(), t.repo, nu, time.Now())
 			if err != nil {
 				return err
 			}
