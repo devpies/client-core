@@ -41,6 +41,7 @@ type TeamQueries struct {
 	project    ProjectQuerier
 	membership MembershipQuerier
 	user       UserQuerier
+	invite     InviteQuerier
 }
 
 type TeamQuerier interface {
@@ -54,6 +55,13 @@ type ProjectQuerier interface {
 	Retrieve(ctx context.Context, repo database.Storer, pid string) (projects.ProjectCopy, error)
 	Update(ctx context.Context, repo database.Storer, pid string, update projects.UpdateProjectCopy) error
 	Delete(ctx context.Context, repo database.Storer, pid string) error
+}
+
+type InviteQuerier interface {
+	Create(ctx context.Context, repo database.Storer, ni invites.NewInvite, now time.Time) (invites.Invite, error)
+	RetrieveInvite(ctx context.Context, repo database.Storer, uid string, iid string) (invites.Invite, error)
+	RetrieveInvites(ctx context.Context, repo database.Storer, uid string) ([]invites.Invite, error)
+	Update(ctx context.Context, repo database.Storer, update invites.UpdateInvite, uid, iid string, now time.Time) (invites.Invite, error)
 }
 
 func (t *Team) Create(w http.ResponseWriter, r *http.Request) error {
@@ -375,7 +383,7 @@ func (t *Team) CreateInvite(w http.ResponseWriter, r *http.Request) error {
 			return err
 		}
 
-		_, err = invites.Create(r.Context(), t.repo, ni, time.Now())
+		_, err = t.query.invite.Create(r.Context(), t.repo, ni, time.Now())
 		if err != nil {
 			return err
 		}
@@ -387,7 +395,7 @@ func (t *Team) CreateInvite(w http.ResponseWriter, r *http.Request) error {
 func (t *Team) RetrieveInvites(w http.ResponseWriter, r *http.Request) error {
 	uid := t.auth0.UserByID(r.Context())
 
-	is, err := invites.RetrieveInvites(r.Context(), t.repo, uid)
+	is, err := t.query.invite.RetrieveInvites(r.Context(), t.repo, uid)
 	if err != nil {
 		switch err {
 		case teams.ErrNotFound:
@@ -435,7 +443,7 @@ func (t *Team) UpdateInvite(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	iv, err := invites.Update(r.Context(), t.repo, update, uid, iid, time.Now())
+	iv, err := t.query.invite.Update(r.Context(), t.repo, update, uid, iid, time.Now())
 	if err != nil {
 		return err
 	}
