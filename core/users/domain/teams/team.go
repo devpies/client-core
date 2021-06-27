@@ -17,6 +17,12 @@ var (
 	ErrInvalidID = errors.New("id provided was not a valid UUID")
 )
 
+type TeamQuerier interface {
+	Create(ctx context.Context, repo database.Storer, nt NewTeam, uid string, now time.Time) (Team, error)
+	Retrieve(ctx context.Context, repo database.Storer, tid string) (Team, error)
+	List(ctx context.Context, repo database.Storer, uid string) ([]Team, error)
+}
+
 type Queries struct{}
 
 func (q *Queries) Create(ctx context.Context, repo database.Storer, nt NewTeam, uid string, now time.Time) (Team, error) {
@@ -25,7 +31,7 @@ func (q *Queries) Create(ctx context.Context, repo database.Storer, nt NewTeam, 
 		Name:      nt.Name,
 		UserID:    uid,
 		UpdatedAt: now.UTC(),
-		CreateAt:  now.UTC(),
+		CreatedAt:  now.UTC(),
 	}
 
 	stmt := repo.Insert(
@@ -35,7 +41,7 @@ func (q *Queries) Create(ctx context.Context, repo database.Storer, nt NewTeam, 
 		"name":       t.Name,
 		"user_id":    t.UserID,
 		"updated_at": t.UpdatedAt,
-		"created_at": t.CreateAt,
+		"created_at": t.CreatedAt,
 	})
 
 	if _, err := stmt.ExecContext(ctx); err != nil {

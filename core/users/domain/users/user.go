@@ -18,6 +18,13 @@ var (
 	ErrInvalidID = errors.New("id provided was not a valid UUID")
 )
 
+type UserQuerier interface {
+	Create(ctx context.Context, repo database.Storer, nu NewUser, now time.Time) (User, error)
+	RetrieveByEmail(repo database.Storer, email string) (User, error)
+	RetrieveMe(ctx context.Context, repo database.Storer, uid string) (User, error)
+	RetrieveMeByAuthID(ctx context.Context, repo database.Storer, aid string) (User, error)
+}
+
 type Queries struct{}
 
 func (q *Queries) Create(ctx context.Context, repo database.Storer, nu NewUser, now time.Time) (User, error) {
