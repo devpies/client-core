@@ -40,8 +40,6 @@ kanban or agile style board management and auxiliary services like cost estimati
 
 and provide a github username and access token.
 
-There's a `secrets.zip` for the team. Just Ask.
-
 ## Developement
 
 Run front and back ends simultaneously. For faster development we don't run the [devpie-client-app](https://github.com/ivorscott/devpie-client-app)
