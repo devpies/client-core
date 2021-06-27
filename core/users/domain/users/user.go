@@ -3,19 +3,21 @@ package users
 import (
 	"context"
 	"database/sql"
-	"log"
+	"errors"
+	"fmt"
+	"net/mail"
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/devpies/devpie-client-core/users/platform/database"
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 )
 
 // Error codes returned by failures to handle users.
 var (
-	ErrNotFound  = errors.New("user not found")
-	ErrInvalidID = errors.New("id provided was not a valid UUID")
+	ErrNotFound     = errors.New("user not found")
+	ErrInvalidID    = errors.New("id provided was not a valid UUID")
+	ErrInvalidEmail = errors.New("address provided was not a valid email")
 )
 
 type UserQuerier interface {
@@ -45,7 +47,7 @@ func (q *Queries) Create(ctx context.Context, repo database.Storer, nu NewUser, 
 		"users",
 	).SetMap(map[string]interface{}{
 		"user_id":        u.ID,
-		"auth0_id":       u.Auth0ID, // unique
+		"auth0_id":       u.Auth0ID,
 		"email":          u.Email,
 		"email_verified": u.EmailVerified,
 		"first_name":     u.FirstName,
@@ -57,7 +59,7 @@ func (q *Queries) Create(ctx context.Context, repo database.Storer, nu NewUser, 
 	})
 
 	if _, err := stmt.ExecContext(ctx); err != nil {
-		return u, errors.Wrapf(err, "inserting user: %v", nu)
+		return u, err
 	}
 
 	return u, nil
@@ -65,6 +67,10 @@ func (q *Queries) Create(ctx context.Context, repo database.Storer, nu NewUser, 
 
 func (q *Queries) RetrieveByEmail(repo database.Storer, email string) (User, error) {
 	var u User
+
+	if _, err := mail.ParseAddress(email); err != nil {
+		return u, ErrInvalidEmail
+	}
 
 	stmt := repo.Select(
 		"user_id",
@@ -83,7 +89,7 @@ func (q *Queries) RetrieveByEmail(repo database.Storer, email string) (User, err
 
 	query, args, err := stmt.ToSql()
 	if err != nil {
-		return u, errors.Wrapf(err, "building query: %v", args)
+		return u, fmt.Errorf("%w: arguments (%v)", err, args)
 	}
 
 	if err := repo.Get(&u, query, email); err != nil {
@@ -100,8 +106,6 @@ func (q *Queries) RetrieveMe(ctx context.Context, repo database.Storer, uid stri
 	var u User
 
 	if _, err := uuid.Parse(uid); err != nil {
-		log.Println("the invalid user", uid)
-
 		return u, ErrInvalidID
 	}
 	stmt := repo.Select(
@@ -121,7 +125,7 @@ func (q *Queries) RetrieveMe(ctx context.Context, repo database.Storer, uid stri
 
 	query, args, err := stmt.ToSql()
 	if err != nil {
-		return u, errors.Wrapf(err, "building query: %v", args)
+		return u, fmt.Errorf("%w: arguments (%v)", err, args)
 	}
 
 	if err := repo.GetContext(ctx, &u, query, uid); err != nil {
@@ -154,7 +158,7 @@ func (q *Queries) RetrieveMeByAuthID(ctx context.Context, repo database.Storer, 
 
 	query, args, err := stmt.ToSql()
 	if err != nil {
-		return u, errors.Wrapf(err, "building query: %v", args)
+		return u, fmt.Errorf("%w: arguments (%v)", err, args)
 	}
 
 	if err := repo.GetContext(ctx, &u, query, aid); err != nil {

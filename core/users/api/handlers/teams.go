@@ -2,17 +2,12 @@ package handlers
 
 import (
 	"fmt"
-	"github.com/devpies/devpie-client-core/users/api/publishers"
 	"log"
 	"net/http"
 	"strings"
 	"time"
 
-	"github.com/go-chi/chi"
-	"github.com/pkg/errors"
-	"github.com/sendgrid/sendgrid-go"
-	"github.com/sendgrid/sendgrid-go/helpers/mail"
-
+	"github.com/devpies/devpie-client-core/users/api/publishers"
 	"github.com/devpies/devpie-client-core/users/domain/invites"
 	"github.com/devpies/devpie-client-core/users/domain/memberships"
 	"github.com/devpies/devpie-client-core/users/domain/projects"
@@ -22,6 +17,9 @@ import (
 	"github.com/devpies/devpie-client-core/users/platform/database"
 	"github.com/devpies/devpie-client-core/users/platform/web"
 	"github.com/devpies/devpie-client-events/go/events"
+	"github.com/go-chi/chi"
+	"github.com/sendgrid/sendgrid-go"
+	"github.com/sendgrid/sendgrid-go/helpers/mail"
 )
 
 type Team struct {
@@ -56,12 +54,12 @@ func (t *Team) Create(w http.ResponseWriter, r *http.Request) error {
 
 	if _, err := t.query.project.Retrieve(r.Context(), t.repo, nt.ProjectID); err != nil {
 		switch err {
-		case projects.ErrNotFound:
-			return web.NewRequestError(err, http.StatusNotFound)
 		case projects.ErrInvalidID:
 			return web.NewRequestError(err, http.StatusBadRequest)
+		case projects.ErrNotFound:
+			return web.NewRequestError(err, http.StatusNotFound)
 		default:
-			return fmt.Errorf("failed retrieving project: %q : %w", nt.ProjectID, err)
+			return fmt.Errorf("failed to retrieve project: %w", err)
 		}
 	}
 
@@ -106,7 +104,14 @@ func (t *Team) AssignExistingTeam(w http.ResponseWriter, r *http.Request) error 
 
 	tm, err := t.query.team.Retrieve(r.Context(), t.repo, tid)
 	if err != nil {
-		return web.NewRequestError(err, http.StatusNotFound)
+		switch err {
+		case teams.ErrInvalidID:
+			return web.NewRequestError(err, http.StatusBadRequest)
+		case teams.ErrNotFound:
+			return web.NewRequestError(err, http.StatusNotFound)
+		default:
+			return fmt.Errorf("failed to retrieve team %w", err)
+		}
 	}
 
 	var up = projects.UpdateProjectCopy{
@@ -122,7 +127,7 @@ func (t *Team) AssignExistingTeam(w http.ResponseWriter, r *http.Request) error 
 		case projects.ErrInvalidID:
 			return web.NewRequestError(err, http.StatusBadRequest)
 		default:
-			return errors.Wrapf(err, "updating project %q", pid)
+			return fmt.Errorf("failed to update project: %w", err)
 		}
 	}
 
@@ -143,12 +148,12 @@ func (t *Team) LeaveTeam(w http.ResponseWriter, r *http.Request) error {
 	mid, err := t.query.membership.Delete(r.Context(), t.repo, tid, uid)
 	if err != nil {
 		switch err {
-		case teams.ErrNotFound:
-			return web.NewRequestError(err, http.StatusNotFound)
 		case teams.ErrInvalidID:
 			return web.NewRequestError(err, http.StatusBadRequest)
+		case teams.ErrNotFound:
+			return web.NewRequestError(err, http.StatusNotFound)
 		default:
-			return errors.Wrapf(err, "looking for team %q", tid)
+			return fmt.Errorf("failed to delete membership: %w", err)
 		}
 	}
 
@@ -167,12 +172,12 @@ func (t *Team) Retrieve(w http.ResponseWriter, r *http.Request) error {
 	tm, err := t.query.team.Retrieve(r.Context(), t.repo, tid)
 	if err != nil {
 		switch err {
-		case teams.ErrNotFound:
-			return web.NewRequestError(err, http.StatusNotFound)
 		case teams.ErrInvalidID:
 			return web.NewRequestError(err, http.StatusBadRequest)
+		case teams.ErrNotFound:
+			return web.NewRequestError(err, http.StatusNotFound)
 		default:
-			return errors.Wrapf(err, "looking for team %q", tid)
+			return fmt.Errorf("failed to retrieve team: %w", err)
 		}
 	}
 
@@ -185,12 +190,12 @@ func (t *Team) List(w http.ResponseWriter, r *http.Request) error {
 	tms, err := t.query.team.List(r.Context(), t.repo, uid)
 	if err != nil {
 		switch err {
-		case teams.ErrNotFound:
-			return web.NewRequestError(err, http.StatusNotFound)
 		case teams.ErrInvalidID:
 			return web.NewRequestError(err, http.StatusBadRequest)
+		case teams.ErrNotFound:
+			return web.NewRequestError(err, http.StatusNotFound)
 		default:
-			return errors.Wrapf(err, "looking for user's teams")
+			return fmt.Errorf("failed to retrieve teams: %w", err)
 		}
 	}
 
@@ -292,12 +297,12 @@ func (t *Team) RetrieveInvites(w http.ResponseWriter, r *http.Request) error {
 	is, err := t.query.invite.RetrieveInvites(r.Context(), t.repo, uid)
 	if err != nil {
 		switch err {
-		case teams.ErrNotFound:
-			return web.NewRequestError(err, http.StatusNotFound)
-		case teams.ErrInvalidID:
+		case invites.ErrInvalidID:
 			return web.NewRequestError(err, http.StatusBadRequest)
+		case invites.ErrNotFound:
+			return web.NewRequestError(err, http.StatusNotFound)
 		default:
-			return errors.Wrapf(err, "searching team invites for %q", uid)
+			return fmt.Errorf("failed to retrieve invites: %w", err)
 		}
 	}
 
@@ -305,8 +310,16 @@ func (t *Team) RetrieveInvites(w http.ResponseWriter, r *http.Request) error {
 	for _, invite := range is {
 		team, err := t.query.team.Retrieve(r.Context(), t.repo, invite.TeamID)
 		if err != nil {
-			return err
+			switch err {
+			case teams.ErrInvalidID:
+				return web.NewRequestError(err, http.StatusBadRequest)
+			case teams.ErrNotFound:
+				return web.NewRequestError(err, http.StatusNotFound)
+			default:
+				return fmt.Errorf("failed to retrieve team %w", err)
+			}
 		}
+
 		ie := invites.InviteEnhanced{
 			ID:         invite.ID,
 			UserID:     invite.UserID,
@@ -318,6 +331,7 @@ func (t *Team) RetrieveInvites(w http.ResponseWriter, r *http.Request) error {
 			UpdatedAt:  invite.UpdatedAt,
 			CreatedAt:  invite.CreatedAt,
 		}
+
 		res = append(res, ie)
 	}
 
@@ -350,7 +364,7 @@ func (t *Team) UpdateInvite(w http.ResponseWriter, r *http.Request) error {
 		}
 		m, err := t.query.membership.Create(r.Context(), t.repo, nm, time.Now())
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to insert membership: %w", err)
 		}
 
 		if t.nats != nil {

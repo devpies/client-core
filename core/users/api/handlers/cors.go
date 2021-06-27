@@ -1,9 +1,10 @@
 package handlers
 
 import (
-	"github.com/rs/cors"
 	"net/http"
 	"strings"
+
+	"github.com/rs/cors"
 )
 
 func Cors(origins string) *cors.Cors {

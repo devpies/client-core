@@ -3,11 +3,13 @@ package projects
 import (
 	"context"
 	"database/sql"
+	"errors"
+	"fmt"
+
 	sq "github.com/Masterminds/squirrel"
 	"github.com/devpies/devpie-client-core/users/platform/database"
 	"github.com/google/uuid"
 	"github.com/lib/pq"
-	"github.com/pkg/errors"
 )
 
 // Error codes returned by failures to handle projects.
@@ -50,7 +52,7 @@ func (q *Queries) Retrieve(ctx context.Context, repo database.Storer, pid string
 
 	query, args, err := stmt.ToSql()
 	if err != nil {
-		return p, errors.Wrapf(err, "building query: %v", args)
+		return p, fmt.Errorf("%w: arguments (%v)", err, args)
 	}
 
 	row := repo.QueryRowxContext(ctx, query, pid)
@@ -83,7 +85,7 @@ func (q *Queries) Create(ctx context.Context, repo *database.Repository, p Proje
 	})
 
 	if _, err := stmt.ExecContext(ctx); err != nil {
-		return errors.Wrapf(err, "inserting project: %v", p)
+		return err
 	}
 
 	return nil
@@ -128,7 +130,7 @@ func (q *Queries) Update(ctx context.Context, repo database.Storer, pid string, 
 
 	_, err = stmt.ExecContext(ctx)
 	if err != nil {
-		return errors.Wrap(err, "updating project")
+		return err
 	}
 
 	return nil
@@ -144,7 +146,7 @@ func (q *Queries) Delete(ctx context.Context, repo database.Storer, pid string) 
 	).Where(sq.Eq{"project_id": pid})
 
 	if _, err := stmt.ExecContext(ctx); err != nil {
-		return errors.Wrapf(err, "deleting project %s", pid)
+		return err
 	}
 
 	return nil

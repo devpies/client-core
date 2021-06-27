@@ -25,9 +25,9 @@ type MembershipEnhanced struct {
 }
 
 type NewMembership struct {
-	UserID string `json:"userId"`
-	TeamID string `json:"teamId"`
-	Role   string `json:"role"`
+	UserID string `json:"userId" validate:"required"`
+	TeamID string `json:"teamId" validate:"required"`
+	Role   string `json:"role" validate:"required"`
 }
 
 type UpdateMembership struct {
