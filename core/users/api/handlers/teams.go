@@ -61,7 +61,7 @@ func (t *Team) Create(w http.ResponseWriter, r *http.Request) error {
 		case projects.ErrInvalidID:
 			return web.NewRequestError(err, http.StatusBadRequest)
 		default:
-			return errors.Wrapf(err, "creating team for project %q", nt.ProjectID)
+			return fmt.Errorf("failed retrieving project: %q : %w", nt.ProjectID, err)
 		}
 	}
 
