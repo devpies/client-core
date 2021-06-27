@@ -53,7 +53,7 @@ func API(shutdown chan os.Signal, repo database.Storer, log *log.Logger, origins
 	app.Handle(http.MethodGet, "/api/v1/users/me", u.RetrieveMe)
 
 	app.Handle(http.MethodPost, "/api/v1/users/teams", tm.Create)
-	app.Handle(http.MethodPost, "/api/v1/users/teams/{tid}/project/{pid}", tm.AssignExisting)
+	app.Handle(http.MethodPost, "/api/v1/users/teams/{tid}/project/{pid}", tm.AssignExistingTeam)
 	app.Handle(http.MethodPost, "/api/v1/users/teams/{tid}/leave", tm.LeaveTeam)
 	app.Handle(http.MethodGet, "/api/v1/users/teams", tm.List)
 	app.Handle(http.MethodGet, "/api/v1/users/teams/{tid}", tm.Retrieve)
