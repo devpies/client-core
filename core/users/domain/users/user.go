@@ -18,7 +18,7 @@ var (
 	ErrInvalidID = errors.New("id provided was not a valid UUID")
 )
 
-type Querier interface {
+type UserQuerier interface {
 	Create(ctx context.Context, repo database.Storer, nu NewUser, now time.Time) (User, error)
 	RetrieveByEmail(repo database.Storer, email string) (User, error)
 	RetrieveMe(ctx context.Context, repo database.Storer, uid string) (User, error)

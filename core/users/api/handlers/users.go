@@ -13,15 +13,19 @@ import (
 	"time"
 )
 
-type Users struct {
+type User struct {
 	repo    database.Storer
 	log     *log.Logger
 	auth0   auth0.Auther
 	origins string
-	query   users.Querier
+	query   UserQueries
 }
 
-func (u *Users) RetrieveMe(w http.ResponseWriter, r *http.Request) error {
+type UserQueries struct {
+	user users.UserQuerier
+}
+
+func (u *User) RetrieveMe(w http.ResponseWriter, r *http.Request) error {
 	var us users.User
 
 	uid := u.auth0.UserByID(r.Context())
@@ -29,7 +33,7 @@ func (u *Users) RetrieveMe(w http.ResponseWriter, r *http.Request) error {
 	if uid == "" {
 		return web.NewRequestError(users.ErrNotFound, http.StatusNotFound)
 	}
-	us, err := u.query.RetrieveMe(r.Context(), u.repo, uid)
+	us, err := u.query.user.RetrieveMe(r.Context(), u.repo, uid)
 	if err != nil {
 		switch err {
 		case users.ErrNotFound:
@@ -44,7 +48,7 @@ func (u *Users) RetrieveMe(w http.ResponseWriter, r *http.Request) error {
 	return web.Respond(r.Context(), w, us, http.StatusOK)
 }
 
-func (u *Users) Create(w http.ResponseWriter, r *http.Request) error {
+func (u *User) Create(w http.ResponseWriter, r *http.Request) error {
 	var nu users.NewUser
 
 	if err := web.Decode(r, &nu); err != nil {
@@ -61,10 +65,10 @@ func (u *Users) Create(w http.ResponseWriter, r *http.Request) error {
 	status := http.StatusAccepted
 
 	// does the user already exist?
-	user, err = u.query.RetrieveMeByAuthID(r.Context(), u.repo, nu.Auth0ID)
+	user, err = u.query.user.RetrieveMeByAuthID(r.Context(), u.repo, nu.Auth0ID)
 	if err != nil {
 		status = http.StatusCreated
-		user, err = u.query.Create(r.Context(), u.repo, nu, time.Now())
+		user, err = u.query.user.Create(r.Context(), u.repo, nu, time.Now())
 		if err != nil {
 			return errors.Wrapf(err, "failed to create user")
 		}

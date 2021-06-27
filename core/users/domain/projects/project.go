@@ -16,7 +16,16 @@ var (
 	ErrInvalidID = errors.New("id provided was not a valid UUID")
 )
 
-func Retrieve(ctx context.Context, repo database.Storer, pid string) (ProjectCopy, error) {
+type ProjectQuerier interface {
+	Create(ctx context.Context, repo *database.Repository, p ProjectCopy) error
+	Retrieve(ctx context.Context, repo database.Storer, pid string) (ProjectCopy, error)
+	Update(ctx context.Context, repo database.Storer, pid string, update UpdateProjectCopy) error
+	Delete(ctx context.Context, repo database.Storer, pid string) error
+}
+
+type Queries struct{}
+
+func (q *Queries) Retrieve(ctx context.Context, repo database.Storer, pid string) (ProjectCopy, error) {
 	var p ProjectCopy
 
 	if _, err := uuid.Parse(pid); err != nil {
@@ -39,12 +48,12 @@ func Retrieve(ctx context.Context, repo database.Storer, pid string) (ProjectCop
 		"projects",
 	).Where(sq.Eq{"project_id": "?"})
 
-	q, args, err := stmt.ToSql()
+	query, args, err := stmt.ToSql()
 	if err != nil {
 		return p, errors.Wrapf(err, "building query: %v", args)
 	}
 
-	row := repo.QueryRowxContext(ctx, q, pid)
+	row := repo.QueryRowxContext(ctx, query, pid)
 	err = row.Scan(&p.ID, &p.Name, &p.Prefix, &p.Description, &p.TeamID, &p.UserID, &p.Active, &p.Public, (*pq.StringArray)(&p.ColumnOrder), &p.UpdatedAt, &p.CreatedAt)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -56,7 +65,7 @@ func Retrieve(ctx context.Context, repo database.Storer, pid string) (ProjectCop
 	return p, nil
 }
 
-func Create(ctx context.Context, repo *database.Repository, p ProjectCopy) error {
+func (q *Queries) Create(ctx context.Context, repo *database.Repository, p ProjectCopy) error {
 	stmt := repo.Insert(
 		"projects",
 	).SetMap(map[string]interface{}{
@@ -80,8 +89,8 @@ func Create(ctx context.Context, repo *database.Repository, p ProjectCopy) error
 	return nil
 }
 
-func Update(ctx context.Context, repo database.Storer, pid string, update UpdateProjectCopy) error {
-	p, err := Retrieve(ctx, repo, pid)
+func (q *Queries) Update(ctx context.Context, repo database.Storer, pid string, update UpdateProjectCopy) error {
+	p, err := q.Retrieve(ctx, repo, pid)
 	if err != nil {
 		return err
 	}
@@ -125,7 +134,7 @@ func Update(ctx context.Context, repo database.Storer, pid string, update Update
 	return nil
 }
 
-func Delete(ctx context.Context, repo database.Storer, pid string) error {
+func (q *Queries) Delete(ctx context.Context, repo database.Storer, pid string) error {
 	if _, err := uuid.Parse(pid); err != nil {
 		return ErrInvalidID
 	}

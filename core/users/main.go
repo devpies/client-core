@@ -131,7 +131,7 @@ func run() error {
 	}()
 
 	go func(repo *database.Repository, nats *events.Client, infolog *log.Logger, queueGroup string) {
-		l := listeners.NewListeners(infolog, repo)
+		l := listeners.NewListener(infolog, repo)
 		l.RegisterAll(nats, queueGroup)
 	}(repo, nats, infolog, queueGroup)
 

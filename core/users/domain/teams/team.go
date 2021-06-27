@@ -17,13 +17,21 @@ var (
 	ErrInvalidID = errors.New("id provided was not a valid UUID")
 )
 
-func Create(ctx context.Context, repo database.Storer, nt NewTeam, uid string, now time.Time) (Team, error) {
+type TeamQuerier interface {
+	Create(ctx context.Context, repo database.Storer, nt NewTeam, uid string, now time.Time) (Team, error)
+	Retrieve(ctx context.Context, repo database.Storer, tid string) (Team, error)
+	List(ctx context.Context, repo database.Storer, uid string) ([]Team, error)
+}
+
+type Queries struct{}
+
+func (q *Queries) Create(ctx context.Context, repo database.Storer, nt NewTeam, uid string, now time.Time) (Team, error) {
 	t := Team{
 		ID:        uuid.New().String(),
 		Name:      nt.Name,
 		UserID:    uid,
 		UpdatedAt: now.UTC(),
-		CreateAt:  now.UTC(),
+		CreatedAt: now.UTC(),
 	}
 
 	stmt := repo.Insert(
@@ -33,7 +41,7 @@ func Create(ctx context.Context, repo database.Storer, nt NewTeam, uid string, n
 		"name":       t.Name,
 		"user_id":    t.UserID,
 		"updated_at": t.UpdatedAt,
-		"created_at": t.CreateAt,
+		"created_at": t.CreatedAt,
 	})
 
 	if _, err := stmt.ExecContext(ctx); err != nil {
@@ -43,7 +51,7 @@ func Create(ctx context.Context, repo database.Storer, nt NewTeam, uid string, n
 	return t, nil
 }
 
-func Retrieve(ctx context.Context, repo database.Storer, tid string) (Team, error) {
+func (q *Queries) Retrieve(ctx context.Context, repo database.Storer, tid string) (Team, error) {
 	var t Team
 
 	if _, err := uuid.Parse(tid); err != nil {
@@ -60,12 +68,12 @@ func Retrieve(ctx context.Context, repo database.Storer, tid string) (Team, erro
 		"teams",
 	).Where(sq.Eq{"team_id": "?"})
 
-	q, args, err := stmt.ToSql()
+	query, args, err := stmt.ToSql()
 	if err != nil {
 		return t, errors.Wrapf(err, "building query: %v", args)
 	}
 
-	if err := repo.GetContext(ctx, &t, q, tid); err != nil {
+	if err := repo.GetContext(ctx, &t, query, tid); err != nil {
 		if err == sql.ErrNoRows {
 			return t, ErrNotFound
 		}
@@ -75,7 +83,7 @@ func Retrieve(ctx context.Context, repo database.Storer, tid string) (Team, erro
 	return t, nil
 }
 
-func List(ctx context.Context, repo database.Storer, uid string) ([]Team, error) {
+func (q *Queries) List(ctx context.Context, repo database.Storer, uid string) ([]Team, error) {
 	var ts []Team
 
 	if _, err := uuid.Parse(uid); err != nil {
@@ -92,12 +100,12 @@ func List(ctx context.Context, repo database.Storer, uid string) ([]Team, error)
 		"teams",
 	).Where("team_id IN (SELECT team_id FROM memberships WHERE user_id = ?)")
 
-	q, args, err := stmt.ToSql()
+	query, args, err := stmt.ToSql()
 	if err != nil {
 		return ts, errors.Wrapf(err, "building query: %v", args)
 	}
 
-	if err := repo.SelectContext(ctx, &ts, q, uid); err != nil {
+	if err := repo.SelectContext(ctx, &ts, query, uid); err != nil {
 		if err == sql.ErrNoRows {
 			return ts, ErrNotFound
 		}
