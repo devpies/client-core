@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"github.com/sendgrid/sendgrid-go"
 	"log"
 	"net/http"
 	"os"
@@ -17,6 +16,7 @@ import (
 	"github.com/devpies/devpie-client-core/users/platform/database"
 	"github.com/devpies/devpie-client-core/users/platform/web"
 	"github.com/devpies/devpie-client-events/go/events"
+	"github.com/sendgrid/sendgrid-go"
 )
 
 func API(shutdown chan os.Signal, repo database.Storer, log *log.Logger, origins string,

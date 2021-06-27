@@ -2,8 +2,6 @@ package handlers
 
 import (
 	"fmt"
-	"github.com/devpies/devpie-client-core/users/platform/sendgrid"
-	"github.com/sendgrid/sendgrid-go/helpers/mail"
 	"log"
 	"net/http"
 	"strings"
@@ -17,9 +15,11 @@ import (
 	"github.com/devpies/devpie-client-core/users/domain/users"
 	"github.com/devpies/devpie-client-core/users/platform/auth0"
 	"github.com/devpies/devpie-client-core/users/platform/database"
+	"github.com/devpies/devpie-client-core/users/platform/sendgrid"
 	"github.com/devpies/devpie-client-core/users/platform/web"
 	"github.com/devpies/devpie-client-events/go/events"
 	"github.com/go-chi/chi"
+	"github.com/sendgrid/sendgrid-go/helpers/mail"
 )
 
 type Team struct {
