@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"fmt"
+	"github.com/devpies/devpie-client-core/users/platform/sendgrid"
+	"github.com/sendgrid/sendgrid-go/helpers/mail"
 	"log"
 	"net/http"
 	"strings"
@@ -18,19 +20,17 @@ import (
 	"github.com/devpies/devpie-client-core/users/platform/web"
 	"github.com/devpies/devpie-client-events/go/events"
 	"github.com/go-chi/chi"
-	"github.com/sendgrid/sendgrid-go"
-	"github.com/sendgrid/sendgrid-go/helpers/mail"
 )
 
 type Team struct {
-	repo        database.Storer
-	log         *log.Logger
-	auth0       auth0.Auther
-	nats        *events.Client
-	origins     string
-	sendgridKey string
-	query       TeamQueries
-	publish     publishers.Publisher
+	repo    database.Storer
+	log     *log.Logger
+	auth0   auth0.Auther
+	nats    *events.Client
+	origins string
+	sender  sendgrid.Sender
+	query   TeamQueries
+	publish publishers.Publisher
 }
 
 type TeamQueries struct {
@@ -213,25 +213,9 @@ func (t *Team) CreateInvite(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	token, err := t.auth0.RetrieveToken()
-	if err == auth0.ErrNotFound || t.auth0.IsExpired(token) {
-		var nt auth0.NewToken
-		var tk auth0.Token
-
-		nt, err = t.auth0.NewManagementToken()
-		if err != nil {
-			return err
-		}
-		// clean table before persisting
-		if err = t.auth0.DeleteToken(); err != nil {
-			return err
-		}
-
-		tk, err = t.auth0.PersistToken(nt, time.Now())
-		if err != nil {
-			return err
-		}
-		token = tk
+	token, err := t.auth0.GenerateToken()
+	if err != nil {
+		return fmt.Errorf("failure during token generation: %w", err)
 	}
 
 	for _, email := range list.Emails {
@@ -278,8 +262,23 @@ func (t *Team) CreateInvite(w http.ResponseWriter, r *http.Request) error {
 			ni.UserID = u.ID
 		}
 
-		if err = t.SendMail(email, link); err != nil {
-			return err
+		from := mail.NewEmail("DevPie", "people@devpie.io")
+		subject := "You've been invited to a Team on DevPie!"
+		to := mail.NewEmail("Invitee", email)
+
+		html := ""
+		html += "<strong>Join Devpie</strong>"
+		html += "<br/>"
+		html += "<p>To accept your invitation, <a href=\"%s\">create an account</a>.</p>"
+		htmlContent := fmt.Sprintf(html, link)
+
+		plainTextContent := fmt.Sprintf("You've been invited to a Team on DevPie! %s ", link)
+
+		message := mail.NewSingleEmail(from, subject, to, plainTextContent, htmlContent)
+
+		_, err = sendgrid.SendMail(message, t.sender)
+		if err != nil {
+			return fmt.Errorf("failed to send email: %w", err)
 		}
 
 		_, err = t.query.invite.Create(r.Context(), t.repo, ni, time.Now())
@@ -376,32 +375,4 @@ func (t *Team) UpdateInvite(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	return web.Respond(r.Context(), w, iv, http.StatusOK)
-}
-
-func (t *Team) SendMail(email, link string) error {
-	from := mail.NewEmail("DevPie", "people@devpie.io")
-	subject := "You've been invited to a Team on DevPie!"
-	to := mail.NewEmail("Invitee", email)
-
-	html := ""
-	html += "<strong>Join Devpie</strong>"
-	html += "<br/>"
-	html += "<p>To accept your invitation, <a href=\"%s\">create an account</a>.</p>"
-	htmlContent := fmt.Sprintf(html, link)
-
-	plainTextContent := fmt.Sprintf("You've been invited to a Team on DevPie! %s ", link)
-
-	message := mail.NewSingleEmail(from, subject, to, plainTextContent, htmlContent)
-	client := sendgrid.NewSendClient(t.sendgridKey)
-
-	response, err := client.Send(message)
-	if err != nil {
-		return err
-	}
-
-	t.log.Println(response.StatusCode)
-	t.log.Println(response.Body)
-	t.log.Println(response.Headers)
-
-	return nil
 }

@@ -26,7 +26,7 @@ require (
 	github.com/nats-io/stan.go v0.8.3
 	github.com/pkg/errors v0.9.1
 	github.com/rs/cors v1.7.0
-	github.com/sendgrid/rest v2.6.3+incompatible // indirect
+	github.com/sendgrid/rest v2.6.3+incompatible
 	github.com/sendgrid/sendgrid-go v3.9.0+incompatible
 	github.com/stretchr/testify v1.7.0
 	github.com/testcontainers/testcontainers-go v0.10.1-0.20210331130832-54854fb15ccb
