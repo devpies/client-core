@@ -7,10 +7,12 @@ import (
 	"github.com/devpies/devpie-client-core/users/platform/web"
 )
 
+// HealthCheck defines the service's health check mechanism
 type HealthCheck struct {
 	repo database.Storer
 }
 
+// Health returns the service's health status
 func (c *HealthCheck) Health(w http.ResponseWriter, r *http.Request) error {
 	var health struct {
 		Status string `json:"status"`

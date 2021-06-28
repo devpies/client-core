@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// Respond send a response back to the client
 func Respond(ctx context.Context, w http.ResponseWriter, val interface{}, statusCode int) error {
 	if v, ok := ctx.Value(KeyValues).(*Values); ok {
 		v.StatusCode = statusCode

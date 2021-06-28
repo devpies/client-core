@@ -86,7 +86,7 @@ func invite() invites.Invite {
 	}
 }
 
-func teamJson(nt teams.NewTeam) string {
+func teamJSON(nt teams.NewTeam) string {
 	return fmt.Sprintf(`{ "name": "%s", "projectId": "%s" }`,
 		nt.Name, nt.ProjectID)
 }
@@ -120,7 +120,7 @@ func TestTeams_Create_201(t *testing.T) {
 
 	// make request
 	writer := httptest.NewRecorder()
-	request, _ := http.NewRequest(http.MethodGet, "/", strings.NewReader(teamJson(nt)))
+	request, _ := http.NewRequest(http.MethodGet, "/", strings.NewReader(teamJSON(nt)))
 	mux.ServeHTTP(writer, request)
 
 	t.Run("Assert Handler Response", func(t *testing.T) {
@@ -193,7 +193,7 @@ func TestTeams_Create_404_Missing_Project(t *testing.T) {
 
 	// make request
 	writer := httptest.NewRecorder()
-	request, _ := http.NewRequest(http.MethodGet, "/", strings.NewReader(teamJson(nt)))
+	request, _ := http.NewRequest(http.MethodGet, "/", strings.NewReader(teamJSON(nt)))
 	mux.ServeHTTP(writer, request)
 
 	t.Run("Assert Mock Expectations", func(t *testing.T) {
@@ -226,7 +226,7 @@ func TestTeams_Create_400_Invalid_Project_ID(t *testing.T) {
 
 	// make request
 	writer := httptest.NewRecorder()
-	request, _ := http.NewRequest(http.MethodGet, "/", strings.NewReader(teamJson(nt)))
+	request, _ := http.NewRequest(http.MethodGet, "/", strings.NewReader(teamJSON(nt)))
 	mux.ServeHTTP(writer, request)
 
 	t.Run("Assert Mock Expectations", func(t *testing.T) {
@@ -259,7 +259,7 @@ func TestTeams_Create_500_Uncaught_Error_On_Retrieve(t *testing.T) {
 
 	// make request
 	writer := httptest.NewRecorder()
-	request, _ := http.NewRequest(http.MethodGet, "/", strings.NewReader(teamJson(nt)))
+	request, _ := http.NewRequest(http.MethodGet, "/", strings.NewReader(teamJSON(nt)))
 	mux.ServeHTTP(writer, request)
 
 	t.Run("Assert Mock Expectations", func(t *testing.T) {
@@ -292,7 +292,7 @@ func TestTeams_Create_500_Uncaught_Error_On_Create(t *testing.T) {
 
 	// make request
 	writer := httptest.NewRecorder()
-	request, _ := http.NewRequest(http.MethodGet, "/", strings.NewReader(teamJson(nt)))
+	request, _ := http.NewRequest(http.MethodGet, "/", strings.NewReader(teamJSON(nt)))
 	mux.ServeHTTP(writer, request)
 
 	t.Run("Assert Mock Expectations", func(t *testing.T) {
@@ -329,7 +329,7 @@ func TestTeams_Create_500_Uncaught_Error_On_Membership_Create(t *testing.T) {
 
 	// make request
 	writer := httptest.NewRecorder()
-	request, _ := http.NewRequest(http.MethodGet, "/", strings.NewReader(teamJson(nt)))
+	request, _ := http.NewRequest(http.MethodGet, "/", strings.NewReader(teamJSON(nt)))
 	mux.ServeHTTP(writer, request)
 
 	t.Run("Assert Mock Expectations", func(t *testing.T) {
@@ -374,7 +374,7 @@ func TestTeams_Create_500_Uncaught_Error_On_Project_Update(t *testing.T) {
 
 	// make request
 	writer := httptest.NewRecorder()
-	request, _ := http.NewRequest(http.MethodGet, "/", strings.NewReader(teamJson(nt)))
+	request, _ := http.NewRequest(http.MethodGet, "/", strings.NewReader(teamJSON(nt)))
 	mux.ServeHTTP(writer, request)
 
 	t.Run("Assert Mock Expectations", func(t *testing.T) {
@@ -420,7 +420,7 @@ func TestTeams_Create_500_Uncaught_Error_On_Publish(t *testing.T) {
 
 	// make request
 	writer := httptest.NewRecorder()
-	request, _ := http.NewRequest(http.MethodGet, "/", strings.NewReader(teamJson(nt)))
+	request, _ := http.NewRequest(http.MethodGet, "/", strings.NewReader(teamJSON(nt)))
 	mux.ServeHTTP(writer, request)
 
 	t.Run("Assert Mock Expectations", func(t *testing.T) {
@@ -1713,7 +1713,7 @@ func TestTeam_UpdateInvite_200(t *testing.T) {
 	// setup mocks
 	fake := setupTeamMocks()
 	fake.auth0.(*mockAuth.Auther).On("UserByID", mock.AnythingOfType("*context.valueCtx")).Return(uid)
-	fake.query.invite.(*mockQuery.InviteQuerier).On("Update", mock.AnythingOfType("*context.valueCtx"), fake.repo, uid, iv.ID, mock.AnythingOfType("time.Time")).Return(iv, nil)
+	fake.query.invite.(*mockQuery.InviteQuerier).On("Update", mock.AnythingOfType("*context.valueCtx"), fake.repo, invites.UpdateInvite{Accepted: true}, uid, iv.ID, mock.AnythingOfType("time.Time")).Return(iv, nil)
 	fake.query.membership.(*mockQuery.MembershipQuerier).On("Create", mock.AnythingOfType("*context.valueCtx"), fake.repo, nm, mock.AnythingOfType("time.Time")).Return(m, nil)
 	fake.publish.(*mockPub.Publisher).On("MembershipCreated", fake.nats, m, uid).Return(nil)
 
@@ -1780,7 +1780,7 @@ func TestTeam_UpdateInvite_400_Invalid_ID(t *testing.T) {
 	// setup mocks
 	fake := setupTeamMocks()
 	fake.auth0.(*mockAuth.Auther).On("UserByID", mock.AnythingOfType("*context.valueCtx")).Return(uid)
-	fake.query.invite.(*mockQuery.InviteQuerier).On("Update", mock.AnythingOfType("*context.valueCtx"), fake.repo, uid, iv.ID, mock.AnythingOfType("time.Time")).Return(iv, invites.ErrInvalidID)
+	fake.query.invite.(*mockQuery.InviteQuerier).On("Update", mock.AnythingOfType("*context.valueCtx"), fake.repo, invites.UpdateInvite{Accepted: true}, uid, iv.ID, mock.AnythingOfType("time.Time")).Return(iv, invites.ErrInvalidID)
 
 	// setup server
 	mux := chi.NewMux()
@@ -1815,7 +1815,7 @@ func TestTeam_UpdateInvite_404_Missing_Invite(t *testing.T) {
 	// setup mocks
 	fake := setupTeamMocks()
 	fake.auth0.(*mockAuth.Auther).On("UserByID", mock.AnythingOfType("*context.valueCtx")).Return(uid)
-	fake.query.invite.(*mockQuery.InviteQuerier).On("Update", mock.AnythingOfType("*context.valueCtx"), fake.repo, uid, iv.ID, mock.AnythingOfType("time.Time")).Return(iv, invites.ErrNotFound)
+	fake.query.invite.(*mockQuery.InviteQuerier).On("Update", mock.AnythingOfType("*context.valueCtx"), fake.repo, invites.UpdateInvite{Accepted: true}, uid, iv.ID, mock.AnythingOfType("time.Time")).Return(iv, invites.ErrNotFound)
 
 	// setup server
 	mux := chi.NewMux()
@@ -1854,7 +1854,7 @@ func TestTeam_UpdateInvite_500_Uncaught_Error_On_Update(t *testing.T) {
 	// setup mocks
 	fake := setupTeamMocks()
 	fake.auth0.(*mockAuth.Auther).On("UserByID", mock.AnythingOfType("*context.valueCtx")).Return(uid)
-	fake.query.invite.(*mockQuery.InviteQuerier).On("Update", mock.AnythingOfType("*context.valueCtx"), fake.repo, uid, iv.ID, mock.AnythingOfType("time.Time")).Return(iv, cause)
+	fake.query.invite.(*mockQuery.InviteQuerier).On("Update", mock.AnythingOfType("*context.valueCtx"), fake.repo, invites.UpdateInvite{Accepted: true}, uid, iv.ID, mock.AnythingOfType("time.Time")).Return(iv, cause)
 
 	// setup server
 	mux := chi.NewMux()
@@ -1892,7 +1892,7 @@ func TestTeam_UpdateInvite_500_Uncaught_Error_On_Membership_Create(t *testing.T)
 	// setup mocks
 	fake := setupTeamMocks()
 	fake.auth0.(*mockAuth.Auther).On("UserByID", mock.AnythingOfType("*context.valueCtx")).Return(uid)
-	fake.query.invite.(*mockQuery.InviteQuerier).On("Update", mock.AnythingOfType("*context.valueCtx"), fake.repo, uid, iv.ID, mock.AnythingOfType("time.Time")).Return(iv, nil)
+	fake.query.invite.(*mockQuery.InviteQuerier).On("Update", mock.AnythingOfType("*context.valueCtx"), fake.repo, invites.UpdateInvite{Accepted: true}, uid, iv.ID, mock.AnythingOfType("time.Time")).Return(iv, nil)
 	fake.query.membership.(*mockQuery.MembershipQuerier).On("Create", mock.AnythingOfType("*context.valueCtx"), fake.repo, nm, mock.AnythingOfType("time.Time")).Return(m, cause)
 
 	// setup server
@@ -1932,7 +1932,7 @@ func TestTeam_UpdateInvite_500_Uncaught_Error_On_Publish(t *testing.T) {
 	// setup mocks
 	fake := setupTeamMocks()
 	fake.auth0.(*mockAuth.Auther).On("UserByID", mock.AnythingOfType("*context.valueCtx")).Return(uid)
-	fake.query.invite.(*mockQuery.InviteQuerier).On("Update", mock.AnythingOfType("*context.valueCtx"), fake.repo, uid, iv.ID, mock.AnythingOfType("time.Time")).Return(iv, nil)
+	fake.query.invite.(*mockQuery.InviteQuerier).On("Update", mock.AnythingOfType("*context.valueCtx"), fake.repo, invites.UpdateInvite{Accepted: true}, uid, iv.ID, mock.AnythingOfType("time.Time")).Return(iv, nil)
 	fake.query.membership.(*mockQuery.MembershipQuerier).On("Create", mock.AnythingOfType("*context.valueCtx"), fake.repo, nm, mock.AnythingOfType("time.Time")).Return(m, nil)
 	fake.publish.(*mockPub.Publisher).On("MembershipCreated", fake.nats, m, uid).Return(cause)
 

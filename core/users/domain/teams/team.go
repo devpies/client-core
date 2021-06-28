@@ -18,14 +18,17 @@ var (
 	ErrInvalidID = errors.New("id provided was not a valid UUID")
 )
 
+// TeamQuerier describes behavior required for executing team related queries
 type TeamQuerier interface {
 	Create(ctx context.Context, repo database.Storer, nt NewTeam, uid string, now time.Time) (Team, error)
 	Retrieve(ctx context.Context, repo database.Storer, tid string) (Team, error)
 	List(ctx context.Context, repo database.Storer, uid string) ([]Team, error)
 }
 
+// Queries defines method implementations for interacting with the teams table
 type Queries struct{}
 
+// Create inserts a new team into the database
 func (q *Queries) Create(ctx context.Context, repo database.Storer, nt NewTeam, uid string, now time.Time) (Team, error) {
 	var t Team
 
@@ -58,6 +61,7 @@ func (q *Queries) Create(ctx context.Context, repo database.Storer, nt NewTeam, 
 	return t, nil
 }
 
+// Retrieve retrieves a single team from the database
 func (q *Queries) Retrieve(ctx context.Context, repo database.Storer, tid string) (Team, error) {
 	var t Team
 
@@ -90,6 +94,7 @@ func (q *Queries) Retrieve(ctx context.Context, repo database.Storer, tid string
 	return t, nil
 }
 
+// List retrieves a set of teams from the database
 func (q *Queries) List(ctx context.Context, repo database.Storer, uid string) ([]Team, error) {
 	var ts []Team
 

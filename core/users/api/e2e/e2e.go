@@ -4,12 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/ardanlabs/conf"
-	"github.com/devpies/devpie-client-core/users/platform/database"
-	"github.com/devpies/devpie-client-core/users/schema"
-	"github.com/docker/go-connections/nat"
-	tc "github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -17,9 +11,16 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/ardanlabs/conf"
+	"github.com/devpies/devpie-client-core/users/platform/database"
+	"github.com/devpies/devpie-client-core/users/schema"
+	"github.com/docker/go-connections/nat"
+	tc "github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/wait"
 )
 
-type Cfg struct {
+type config struct {
 	Web struct {
 		Port                 string        `conf:"default::4000"`
 		Debug                string        `conf:"default:localhost:6060"`
@@ -52,10 +53,10 @@ type Cfg struct {
 	}
 }
 
-func setupTests(t *testing.T) (Cfg, *database.Repository, func(), *log.Logger) {
+func setupTests(t *testing.T) (config, *database.Repository, func(), *log.Logger) {
 	infolog := log.New(os.Stderr, "E2E TEST : ", log.LstdFlags|log.Lmicroseconds|log.Lshortfile)
 
-	var cfg Cfg
+	var cfg config
 
 	if err := conf.Parse(os.Args[1:], "API", &cfg); err != nil {
 		if err == conf.ErrHelpWanted {
@@ -74,7 +75,7 @@ func setupTests(t *testing.T) (Cfg, *database.Repository, func(), *log.Logger) {
 	return cfg, repo, rClose, infolog
 }
 
-func newTestRepository(t *testing.T, cfg Cfg) (*database.Repository, func()) {
+func newTestRepository(t *testing.T, cfg config) (*database.Repository, func()) {
 	ctx := context.Background()
 
 	postgresPort := nat.Port("5432/tcp")
@@ -136,6 +137,7 @@ func newTestRepository(t *testing.T, cfg Cfg) (*database.Repository, func()) {
 	return repo, rClose
 }
 
+// Test stores auth dependencies to support e2e tests
 type Test struct {
 	t                 *testing.T
 	Auth0Domain       string
