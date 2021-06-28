@@ -125,7 +125,7 @@ func run() error {
 	nats, eClose := events.NewClient(cfg.Nats.ClusterID, clusterID, cfg.Nats.URL)
 	defer func() {
 		cerr := eClose()
-		if err != nil {
+		if cerr != nil {
 			err = cerr
 		}
 	}()
