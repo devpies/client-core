@@ -2,17 +2,12 @@ package handlers
 
 import (
 	"fmt"
-	"github.com/devpies/devpie-client-core/users/api/publishers"
 	"log"
 	"net/http"
 	"strings"
 	"time"
 
-	"github.com/go-chi/chi"
-	"github.com/pkg/errors"
-	"github.com/sendgrid/sendgrid-go"
-	"github.com/sendgrid/sendgrid-go/helpers/mail"
-
+	"github.com/devpies/devpie-client-core/users/api/publishers"
 	"github.com/devpies/devpie-client-core/users/domain/invites"
 	"github.com/devpies/devpie-client-core/users/domain/memberships"
 	"github.com/devpies/devpie-client-core/users/domain/projects"
@@ -20,19 +15,22 @@ import (
 	"github.com/devpies/devpie-client-core/users/domain/users"
 	"github.com/devpies/devpie-client-core/users/platform/auth0"
 	"github.com/devpies/devpie-client-core/users/platform/database"
+	"github.com/devpies/devpie-client-core/users/platform/sendgrid"
 	"github.com/devpies/devpie-client-core/users/platform/web"
 	"github.com/devpies/devpie-client-events/go/events"
+	"github.com/go-chi/chi"
+	"github.com/sendgrid/sendgrid-go/helpers/mail"
 )
 
 type Team struct {
-	repo        database.Storer
-	log         *log.Logger
-	auth0       auth0.Auther
-	nats        *events.Client
-	origins     string
-	sendgridKey string
-	query       TeamQueries
-	publish     publishers.Publisher
+	repo    database.Storer
+	log     *log.Logger
+	auth0   auth0.Auther
+	nats    *events.Client
+	origins string
+	sender  sendgrid.Sender
+	query   TeamQueries
+	publish publishers.Publisher
 }
 
 type TeamQueries struct {
@@ -56,12 +54,12 @@ func (t *Team) Create(w http.ResponseWriter, r *http.Request) error {
 
 	if _, err := t.query.project.Retrieve(r.Context(), t.repo, nt.ProjectID); err != nil {
 		switch err {
-		case projects.ErrNotFound:
-			return web.NewRequestError(err, http.StatusNotFound)
 		case projects.ErrInvalidID:
 			return web.NewRequestError(err, http.StatusBadRequest)
+		case projects.ErrNotFound:
+			return web.NewRequestError(err, http.StatusNotFound)
 		default:
-			return fmt.Errorf("failed retrieving project: %q : %w", nt.ProjectID, err)
+			return fmt.Errorf("failed to retrieve project: %w", err)
 		}
 	}
 
@@ -106,7 +104,14 @@ func (t *Team) AssignExistingTeam(w http.ResponseWriter, r *http.Request) error 
 
 	tm, err := t.query.team.Retrieve(r.Context(), t.repo, tid)
 	if err != nil {
-		return web.NewRequestError(err, http.StatusNotFound)
+		switch err {
+		case teams.ErrInvalidID:
+			return web.NewRequestError(err, http.StatusBadRequest)
+		case teams.ErrNotFound:
+			return web.NewRequestError(err, http.StatusNotFound)
+		default:
+			return fmt.Errorf("failed to retrieve team: %w", err)
+		}
 	}
 
 	var up = projects.UpdateProjectCopy{
@@ -122,7 +127,7 @@ func (t *Team) AssignExistingTeam(w http.ResponseWriter, r *http.Request) error 
 		case projects.ErrInvalidID:
 			return web.NewRequestError(err, http.StatusBadRequest)
 		default:
-			return errors.Wrapf(err, "updating project %q", pid)
+			return fmt.Errorf("failed to update project: %w", err)
 		}
 	}
 
@@ -143,12 +148,12 @@ func (t *Team) LeaveTeam(w http.ResponseWriter, r *http.Request) error {
 	mid, err := t.query.membership.Delete(r.Context(), t.repo, tid, uid)
 	if err != nil {
 		switch err {
-		case teams.ErrNotFound:
-			return web.NewRequestError(err, http.StatusNotFound)
-		case teams.ErrInvalidID:
+		case memberships.ErrInvalidID:
 			return web.NewRequestError(err, http.StatusBadRequest)
+		case memberships.ErrNotFound:
+			return web.NewRequestError(err, http.StatusNotFound)
 		default:
-			return errors.Wrapf(err, "looking for team %q", tid)
+			return fmt.Errorf("failed to delete membership: %w", err)
 		}
 	}
 
@@ -167,12 +172,12 @@ func (t *Team) Retrieve(w http.ResponseWriter, r *http.Request) error {
 	tm, err := t.query.team.Retrieve(r.Context(), t.repo, tid)
 	if err != nil {
 		switch err {
-		case teams.ErrNotFound:
-			return web.NewRequestError(err, http.StatusNotFound)
 		case teams.ErrInvalidID:
 			return web.NewRequestError(err, http.StatusBadRequest)
+		case teams.ErrNotFound:
+			return web.NewRequestError(err, http.StatusNotFound)
 		default:
-			return errors.Wrapf(err, "looking for team %q", tid)
+			return fmt.Errorf("failed to retrieve team: %w", err)
 		}
 	}
 
@@ -185,12 +190,12 @@ func (t *Team) List(w http.ResponseWriter, r *http.Request) error {
 	tms, err := t.query.team.List(r.Context(), t.repo, uid)
 	if err != nil {
 		switch err {
-		case teams.ErrNotFound:
-			return web.NewRequestError(err, http.StatusNotFound)
 		case teams.ErrInvalidID:
 			return web.NewRequestError(err, http.StatusBadRequest)
+		case teams.ErrNotFound:
+			return web.NewRequestError(err, http.StatusNotFound)
 		default:
-			return errors.Wrapf(err, "looking for user's teams")
+			return fmt.Errorf("failed to retrieve teams: %w", err)
 		}
 	}
 
@@ -208,25 +213,9 @@ func (t *Team) CreateInvite(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	token, err := t.auth0.RetrieveToken()
-	if err == auth0.ErrNotFound || t.auth0.IsExpired(token) {
-		var nt auth0.NewToken
-		var tk auth0.Token
-
-		nt, err = t.auth0.NewManagementToken()
-		if err != nil {
-			return err
-		}
-		// clean table before persisting
-		if err = t.auth0.DeleteToken(); err != nil {
-			return err
-		}
-
-		tk, err = t.auth0.PersistToken(nt, time.Now())
-		if err != nil {
-			return err
-		}
-		token = tk
+	token, err := t.auth0.GenerateToken()
+	if err != nil {
+		return fmt.Errorf("failure during token generation: %w", err)
 	}
 
 	for _, email := range list.Emails {
@@ -273,8 +262,23 @@ func (t *Team) CreateInvite(w http.ResponseWriter, r *http.Request) error {
 			ni.UserID = u.ID
 		}
 
-		if err = t.SendMail(email, link); err != nil {
-			return err
+		from := mail.NewEmail("DevPie", "people@devpie.io")
+		subject := "You've been invited to a Team on DevPie!"
+		to := mail.NewEmail("Invitee", email)
+
+		html := ""
+		html += "<strong>Join Devpie</strong>"
+		html += "<br/>"
+		html += "<p>To accept your invitation, <a href=\"%s\">create an account</a>.</p>"
+		htmlContent := fmt.Sprintf(html, link)
+
+		plainTextContent := fmt.Sprintf("You've been invited to a Team on DevPie! %s ", link)
+
+		message := mail.NewSingleEmail(from, subject, to, plainTextContent, htmlContent)
+
+		_, err = sendgrid.SendMail(message, t.sender)
+		if err != nil {
+			return fmt.Errorf("failed to send email: %w", err)
 		}
 
 		_, err = t.query.invite.Create(r.Context(), t.repo, ni, time.Now())
@@ -292,12 +296,12 @@ func (t *Team) RetrieveInvites(w http.ResponseWriter, r *http.Request) error {
 	is, err := t.query.invite.RetrieveInvites(r.Context(), t.repo, uid)
 	if err != nil {
 		switch err {
-		case teams.ErrNotFound:
-			return web.NewRequestError(err, http.StatusNotFound)
-		case teams.ErrInvalidID:
+		case invites.ErrInvalidID:
 			return web.NewRequestError(err, http.StatusBadRequest)
+		case invites.ErrNotFound:
+			return web.NewRequestError(err, http.StatusNotFound)
 		default:
-			return errors.Wrapf(err, "searching team invites for %q", uid)
+			return fmt.Errorf("failed to retrieve invites: %w", err)
 		}
 	}
 
@@ -305,8 +309,16 @@ func (t *Team) RetrieveInvites(w http.ResponseWriter, r *http.Request) error {
 	for _, invite := range is {
 		team, err := t.query.team.Retrieve(r.Context(), t.repo, invite.TeamID)
 		if err != nil {
-			return err
+			switch err {
+			case teams.ErrInvalidID:
+				return web.NewRequestError(err, http.StatusBadRequest)
+			case teams.ErrNotFound:
+				return web.NewRequestError(err, http.StatusNotFound)
+			default:
+				return fmt.Errorf("failed to retrieve team: %w", err)
+			}
 		}
+
 		ie := invites.InviteEnhanced{
 			ID:         invite.ID,
 			UserID:     invite.UserID,
@@ -318,6 +330,7 @@ func (t *Team) RetrieveInvites(w http.ResponseWriter, r *http.Request) error {
 			UpdatedAt:  invite.UpdatedAt,
 			CreatedAt:  invite.CreatedAt,
 		}
+
 		res = append(res, ie)
 	}
 
@@ -328,18 +341,25 @@ func (t *Team) UpdateInvite(w http.ResponseWriter, r *http.Request) error {
 	var update invites.UpdateInvite
 	var role memberships.Role = memberships.Editor
 
-	uid := t.auth0.UserByID(r.Context())
-	tid := chi.URLParam(r, "tid")
-	iid := chi.URLParam(r, "iid")
-
 	if err := web.Decode(r, &update); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return err
 	}
 
+	uid := t.auth0.UserByID(r.Context())
+	tid := chi.URLParam(r, "tid")
+	iid := chi.URLParam(r, "iid")
+
 	iv, err := t.query.invite.Update(r.Context(), t.repo, update, uid, iid, time.Now())
 	if err != nil {
-		return err
+		switch err {
+		case invites.ErrInvalidID:
+			return web.NewRequestError(err, http.StatusBadRequest)
+		case invites.ErrNotFound:
+			return web.NewRequestError(err, http.StatusNotFound)
+		default:
+			return fmt.Errorf("failed to update invite: %w", err)
+		}
 	}
 
 	if update.Accepted {
@@ -350,7 +370,7 @@ func (t *Team) UpdateInvite(w http.ResponseWriter, r *http.Request) error {
 		}
 		m, err := t.query.membership.Create(r.Context(), t.repo, nm, time.Now())
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to insert membership: %w", err)
 		}
 
 		if t.nats != nil {
@@ -362,32 +382,4 @@ func (t *Team) UpdateInvite(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	return web.Respond(r.Context(), w, iv, http.StatusOK)
-}
-
-func (t *Team) SendMail(email, link string) error {
-	from := mail.NewEmail("DevPie", "people@devpie.io")
-	subject := "You've been invited to a Team on DevPie!"
-	to := mail.NewEmail("Invitee", email)
-
-	html := ""
-	html += "<strong>Join Devpie</strong>"
-	html += "<br/>"
-	html += "<p>To accept your invitation, <a href=\"%s\">create an account</a>.</p>"
-	htmlContent := fmt.Sprintf(html, link)
-
-	plainTextContent := fmt.Sprintf("You've been invited to a Team on DevPie! %s ", link)
-
-	message := mail.NewSingleEmail(from, subject, to, plainTextContent, htmlContent)
-	client := sendgrid.NewSendClient(t.sendgridKey)
-
-	response, err := client.Send(message)
-	if err != nil {
-		return err
-	}
-
-	t.log.Println(response.StatusCode)
-	t.log.Println(response.Body)
-	t.log.Println(response.Headers)
-
-	return nil
 }

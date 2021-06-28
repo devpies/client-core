@@ -3,13 +3,13 @@ package memberships
 import (
 	"context"
 	"database/sql"
+	"errors"
+	"fmt"
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
-	"github.com/devpies/devpie-client-core/users/domain/teams"
 	"github.com/devpies/devpie-client-core/users/platform/database"
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 )
 
 // Error codes returned by failures to handle memberships.
@@ -50,7 +50,7 @@ func (q *Queries) Create(ctx context.Context, repo database.Storer, nm NewMember
 	})
 
 	if _, err := stmt.ExecContext(ctx); err != nil {
-		return m, errors.Wrapf(err, "inserting membership: %v", err)
+		return m, err
 	}
 
 	return m, nil
@@ -80,7 +80,7 @@ func (q *Queries) RetrieveMemberships(ctx context.Context, repo database.Storer,
 
 	query, args, err := stmt.ToSql()
 	if err != nil {
-		return nil, errors.Wrapf(err, "building query: %v", args)
+		return nil, fmt.Errorf("%w: arguments (%v)", err, args)
 	}
 
 	if err := repo.SelectContext(ctx, &m, query, tid); err != nil {
@@ -97,7 +97,11 @@ func (q *Queries) RetrieveMembership(ctx context.Context, repo database.Storer, 
 	var m Membership
 
 	if _, err := uuid.Parse(tid); err != nil {
-		return m, teams.ErrInvalidID
+		return m, ErrInvalidID
+	}
+
+	if _, err := uuid.Parse(uid); err != nil {
+		return m, ErrInvalidID
 	}
 
 	stmt := repo.Select(
@@ -113,7 +117,7 @@ func (q *Queries) RetrieveMembership(ctx context.Context, repo database.Storer, 
 
 	query, args, err := stmt.ToSql()
 	if err != nil {
-		return m, errors.Wrapf(err, "building query: %v", args)
+		return m, fmt.Errorf("%w: arguments (%v)", err, args)
 	}
 	err = repo.QueryRowxContext(ctx, query, tid, uid).StructScan(&m)
 	if err != nil {
@@ -145,15 +149,18 @@ func (q *Queries) Update(ctx context.Context, repo database.Storer, tid string, 
 
 	_, err = stmt.ExecContext(ctx)
 	if err != nil {
-		return errors.Wrap(err, "updating membership")
+		return err
 	}
 
 	return nil
 }
 
 func (q *Queries) Delete(ctx context.Context, repo database.Storer, tid, uid string) (string, error) {
-	if _, err := uuid.Parse(tid); err != nil {
-		return "", ErrInvalidID
+	var id string
+
+	_, err := q.RetrieveMembership(ctx, repo, tid, uid)
+	if err != nil {
+		return id, err
 	}
 
 	stmt := repo.Delete(
@@ -164,17 +171,16 @@ func (q *Queries) Delete(ctx context.Context, repo database.Storer, tid, uid str
 		"RETURNING membership_id",
 	)
 
-	query, _, err := stmt.ToSql()
+	query, args, err := stmt.ToSql()
 	if err != nil {
-		return "", err
+		return id, fmt.Errorf("%w: arguments (%v)", err, args)
 	}
 
 	row := repo.QueryRowxContext(ctx, query, tid, uid)
-	var membershipID string
 
-	if err := row.Scan(&membershipID); err != nil {
-		return "", errors.Wrapf(err, "deleting membership")
+	if err = row.Scan(&id); err != nil {
+		return id, err
 	}
 
-	return membershipID, nil
+	return id, nil
 }

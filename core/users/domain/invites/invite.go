@@ -3,17 +3,19 @@ package invites
 import (
 	"context"
 	"database/sql"
+	"errors"
+	"fmt"
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/devpies/devpie-client-core/users/platform/database"
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 )
 
 // Error codes returned by failures to handle invites.
 var (
-	ErrNotFound = errors.New("invite not found")
+	ErrNotFound  = errors.New("invite not found")
+	ErrInvalidID = errors.New("id provided was not a valid UUID")
 )
 
 type InviteQuerier interface {
@@ -51,7 +53,7 @@ func (q *Queries) Create(ctx context.Context, repo database.Storer, ni NewInvite
 	})
 
 	if _, err := stmt.ExecContext(ctx); err != nil {
-		return i, errors.Wrapf(err, "inserting invite: %v", err)
+		return i, err
 	}
 
 	return i, nil
@@ -59,6 +61,14 @@ func (q *Queries) Create(ctx context.Context, repo database.Storer, ni NewInvite
 
 func (q *Queries) RetrieveInvite(ctx context.Context, repo database.Storer, uid string, iid string) (Invite, error) {
 	var i Invite
+
+	if _, err := uuid.Parse(uid); err != nil {
+		return i, ErrInvalidID
+	}
+
+	if _, err := uuid.Parse(iid); err != nil {
+		return i, ErrInvalidID
+	}
 
 	stmt := repo.Select(
 		"invite_id",
@@ -75,7 +85,7 @@ func (q *Queries) RetrieveInvite(ctx context.Context, repo database.Storer, uid 
 
 	query, args, err := stmt.ToSql()
 	if err != nil {
-		return i, errors.Wrapf(err, "building query: %v", args)
+		return i, fmt.Errorf("%w: arguments (%v)", err, args)
 	}
 
 	err = repo.QueryRowxContext(ctx, query, uid, iid).StructScan(&i)
@@ -92,6 +102,10 @@ func (q *Queries) RetrieveInvite(ctx context.Context, repo database.Storer, uid 
 func (q *Queries) RetrieveInvites(ctx context.Context, repo database.Storer, uid string) ([]Invite, error) {
 	var is []Invite
 
+	if _, err := uuid.Parse(uid); err != nil {
+		return is, ErrInvalidID
+	}
+
 	stmt := repo.Select(
 		"invite_id",
 		"user_id",
@@ -107,7 +121,7 @@ func (q *Queries) RetrieveInvites(ctx context.Context, repo database.Storer, uid
 
 	query, args, err := stmt.ToSql()
 	if err != nil {
-		return nil, errors.Wrapf(err, "building query: %v", args)
+		return nil, fmt.Errorf("%w: arguments (%v)", err, args)
 	}
 
 	if err := repo.SelectContext(ctx, &is, query, uid); err != nil {
@@ -121,11 +135,9 @@ func (q *Queries) RetrieveInvites(ctx context.Context, repo database.Storer, uid
 }
 
 func (q *Queries) Update(ctx context.Context, repo database.Storer, update UpdateInvite, uid, iid string, now time.Time) (Invite, error) {
-	var iv Invite
-
 	i, err := q.RetrieveInvite(ctx, repo, uid, iid)
 	if err != nil {
-		return iv, err
+		return i, err
 	}
 
 	i.Accepted = update.Accepted
@@ -141,7 +153,7 @@ func (q *Queries) Update(ctx context.Context, repo database.Storer, update Updat
 
 	_, err = stmt.ExecContext(ctx)
 	if err != nil {
-		return i, errors.Wrap(err, "updating invite")
+		return i, err
 	}
 
 	return i, nil

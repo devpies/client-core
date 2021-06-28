@@ -26,12 +26,12 @@ type InviteEnhanced struct {
 }
 
 type NewInvite struct {
-	UserID string `json:"userId"`
-	TeamID string `json:"teamId"`
+	UserID string `json:"userId" validate:"required"`
+	TeamID string `json:"teamId" validate:"required"`
 }
 
 type NewList struct {
-	Emails []string `json:"emailList"`
+	Emails []string `json:"emailList" validate:"required"`
 }
 
 type UpdateInvite struct {

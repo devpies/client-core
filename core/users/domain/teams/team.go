@@ -3,12 +3,13 @@ package teams
 import (
 	"context"
 	"database/sql"
+	"errors"
+	"fmt"
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/devpies/devpie-client-core/users/platform/database"
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 )
 
 // Error codes returned by failures to handle teams.
@@ -26,7 +27,13 @@ type TeamQuerier interface {
 type Queries struct{}
 
 func (q *Queries) Create(ctx context.Context, repo database.Storer, nt NewTeam, uid string, now time.Time) (Team, error) {
-	t := Team{
+	var t Team
+
+	if _, err := uuid.Parse(uid); err != nil {
+		return t, ErrInvalidID
+	}
+
+	t = Team{
 		ID:        uuid.New().String(),
 		Name:      nt.Name,
 		UserID:    uid,
@@ -45,7 +52,7 @@ func (q *Queries) Create(ctx context.Context, repo database.Storer, nt NewTeam, 
 	})
 
 	if _, err := stmt.ExecContext(ctx); err != nil {
-		return t, errors.Wrap(err, "inserting team")
+		return t, err
 	}
 
 	return t, nil
@@ -70,7 +77,7 @@ func (q *Queries) Retrieve(ctx context.Context, repo database.Storer, tid string
 
 	query, args, err := stmt.ToSql()
 	if err != nil {
-		return t, errors.Wrapf(err, "building query: %v", args)
+		return t, fmt.Errorf("%w: arguments (%v)", err, args)
 	}
 
 	if err := repo.GetContext(ctx, &t, query, tid); err != nil {
@@ -102,7 +109,7 @@ func (q *Queries) List(ctx context.Context, repo database.Storer, uid string) ([
 
 	query, args, err := stmt.ToSql()
 	if err != nil {
-		return ts, errors.Wrapf(err, "building query: %v", args)
+		return ts, fmt.Errorf("%w: arguments (%v)", err, args)
 	}
 
 	if err := repo.SelectContext(ctx, &ts, query, uid); err != nil {

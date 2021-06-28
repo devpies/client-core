@@ -1,21 +1,22 @@
 package handlers
 
 import (
+	"log"
+	"net/http"
+	"os"
+
+	mid "github.com/devpies/devpie-client-core/users/api/middleware"
 	"github.com/devpies/devpie-client-core/users/api/publishers"
 	"github.com/devpies/devpie-client-core/users/domain/invites"
 	"github.com/devpies/devpie-client-core/users/domain/memberships"
 	"github.com/devpies/devpie-client-core/users/domain/projects"
 	"github.com/devpies/devpie-client-core/users/domain/teams"
 	"github.com/devpies/devpie-client-core/users/domain/users"
-	"log"
-	"net/http"
-	"os"
-
-	mid "github.com/devpies/devpie-client-core/users/api/middleware"
 	"github.com/devpies/devpie-client-core/users/platform/auth0"
 	"github.com/devpies/devpie-client-core/users/platform/database"
 	"github.com/devpies/devpie-client-core/users/platform/web"
 	"github.com/devpies/devpie-client-events/go/events"
+	"github.com/sendgrid/sendgrid-go"
 )
 
 func API(shutdown chan os.Signal, repo database.Storer, log *log.Logger, origins string,
@@ -37,7 +38,9 @@ func API(shutdown chan os.Signal, repo database.Storer, log *log.Logger, origins
 
 	app.Handle(http.MethodGet, "/api/v1/health", h.Health)
 	u := User{repo, log, a0, origins, UserQueries{&users.Queries{}}}
-	tm := Team{repo, log, a0, nats, origins, sendgridKey,
+
+	tm := Team{repo, log, a0, nats, origins,
+		sendgrid.NewSendClient(sendgridKey).Send,
 		TeamQueries{
 			&teams.Queries{},
 			&projects.Queries{},
