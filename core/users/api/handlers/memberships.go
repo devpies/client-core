@@ -17,7 +17,7 @@ import (
 type Membership struct {
 	repo  database.Storer
 	log   *log.Logger
-	auth0 *auth0.Auth0
+	auth0 auth0.Auther
 	nats  *events.Client
 	query MembershipQueries
 }
