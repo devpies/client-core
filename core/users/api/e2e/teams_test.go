@@ -3,15 +3,16 @@ package e2e
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/devpies/devpie-client-core/users/api/handlers"
-	"github.com/devpies/devpie-client-core/users/domain/projects"
-	"github.com/devpies/devpie-client-core/users/domain/teams"
-	"github.com/google/go-cmp/cmp"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/devpies/devpie-client-core/users/api/handlers"
+	"github.com/devpies/devpie-client-core/users/domain/projects"
+	"github.com/devpies/devpie-client-core/users/domain/teams"
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestTeams(t *testing.T) {

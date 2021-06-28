@@ -2,12 +2,13 @@ package e2e
 
 import (
 	"fmt"
-	"github.com/devpies/devpie-client-core/users/api/handlers"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/devpies/devpie-client-core/users/api/handlers"
 )
 
 func TestUsers(t *testing.T) {

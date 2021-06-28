@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-// User represent user data from the database.
+// User represent a user profile
 type User struct {
 	ID            string    `db:"user_id" json:"id"`
 	Auth0ID       string    `db:"auth0_id" json:"auth0Id"`
@@ -18,6 +18,7 @@ type User struct {
 	CreatedAt     time.Time `db:"created_at" json:"createdAt"`
 }
 
+// NewUser represents a new user request
 type NewUser struct {
 	Auth0ID       string  `json:"auth0Id" validate:"required"`
 	Email         string  `json:"email" validate:"required"`
@@ -28,6 +29,7 @@ type NewUser struct {
 	Locale        *string `json:"locale"`
 }
 
+// UpdateUser represents an update to a user
 type UpdateUser struct {
 	FirstName *string   `json:"firstName"`
 	LastName  *string   `json:"lastName"`

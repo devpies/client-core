@@ -22,6 +22,7 @@ import (
 	"github.com/sendgrid/sendgrid-go/helpers/mail"
 )
 
+// Team defines team handlers and their dependencies
 type Team struct {
 	repo    database.Storer
 	log     *log.Logger
@@ -33,6 +34,7 @@ type Team struct {
 	publish publishers.Publisher
 }
 
+// TeamQueries defines queries required by team handlers
 type TeamQueries struct {
 	team       teams.TeamQuerier
 	project    projects.ProjectQuerier
@@ -41,6 +43,7 @@ type TeamQueries struct {
 	invite     invites.InviteQuerier
 }
 
+// Create creates a new team for a project
 func (t *Team) Create(w http.ResponseWriter, r *http.Request) error {
 	var nt teams.NewTeam
 	var role memberships.Role = memberships.Administrator
@@ -97,6 +100,7 @@ func (t *Team) Create(w http.ResponseWriter, r *http.Request) error {
 	return web.Respond(r.Context(), w, tm, http.StatusCreated)
 }
 
+// AssignExistingTeam assigns an existing team to a project
 func (t *Team) AssignExistingTeam(w http.ResponseWriter, r *http.Request) error {
 	tid := chi.URLParam(r, "tid")
 	pid := chi.URLParam(r, "pid")
@@ -140,6 +144,7 @@ func (t *Team) AssignExistingTeam(w http.ResponseWriter, r *http.Request) error 
 	return web.Respond(r.Context(), w, nil, http.StatusOK)
 }
 
+// LeaveTeam destroys a team membership
 func (t *Team) LeaveTeam(w http.ResponseWriter, r *http.Request) error {
 	tid := chi.URLParam(r, "tid")
 
@@ -166,6 +171,7 @@ func (t *Team) LeaveTeam(w http.ResponseWriter, r *http.Request) error {
 	return web.Respond(r.Context(), w, nil, http.StatusOK)
 }
 
+// Retrieve returns a team by id
 func (t *Team) Retrieve(w http.ResponseWriter, r *http.Request) error {
 	tid := chi.URLParam(r, "tid")
 
@@ -184,6 +190,7 @@ func (t *Team) Retrieve(w http.ResponseWriter, r *http.Request) error {
 	return web.Respond(r.Context(), w, tm, http.StatusOK)
 }
 
+// List returns all teams associated with the authenticated user
 func (t *Team) List(w http.ResponseWriter, r *http.Request) error {
 	uid := t.auth0.UserByID(r.Context())
 
@@ -202,6 +209,7 @@ func (t *Team) List(w http.ResponseWriter, r *http.Request) error {
 	return web.Respond(r.Context(), w, tms, http.StatusOK)
 }
 
+// CreateInvite sends new team invitations
 func (t *Team) CreateInvite(w http.ResponseWriter, r *http.Request) error {
 	var list invites.NewList
 
@@ -290,6 +298,7 @@ func (t *Team) CreateInvite(w http.ResponseWriter, r *http.Request) error {
 	return web.Respond(r.Context(), w, nil, http.StatusCreated)
 }
 
+// RetrieveInvites returns invitations for the authenticated user
 func (t *Team) RetrieveInvites(w http.ResponseWriter, r *http.Request) error {
 	uid := t.auth0.UserByID(r.Context())
 
@@ -337,6 +346,7 @@ func (t *Team) RetrieveInvites(w http.ResponseWriter, r *http.Request) error {
 	return web.Respond(r.Context(), w, res, http.StatusOK)
 }
 
+// UpdateInvite updates an existing invitation
 func (t *Team) UpdateInvite(w http.ResponseWriter, r *http.Request) error {
 	var update invites.UpdateInvite
 	var role memberships.Role = memberships.Editor
