@@ -17,13 +17,10 @@ kanban or agile style board management and auxiliary services like cost estimati
 ### Setup
 
 #### Requirements
-
+- [Go](https://golang.org/doc/install)
 - [Docker and Kubernetes](https://docs.docker.com/desktop/)
 - [Tilt](https://tilt.dev/)
-- AWS
-- Sengrid
-- Freshbooks
-- [Auth0](http://auth0.com/) with [Github Deployments](https://auth0.com/docs/extensions/github-deployments) enabled
+- Secrets
 
 #### Configuration
 
@@ -79,6 +76,8 @@ kubectl port-forward pod/pgadmin 8888:80
 ```
 
 ### Migrations
+
+Install [migrate](https://github.com/golang-migrate/migrate/releases).
 
 Migrations exist under the following paths:
 
@@ -201,7 +200,7 @@ message interfaces across multiple programming languages, but the Typescript def
 
 Two architectural models are adopted: _a traditional microservices model_ and
 _an event sourcing model_ driven by CQRS.
-[CQRS allows you to scale your writes and reads separately](https://medium.com/@hugo.oliveira.rocha/what-they-dont-tell-you-about-event-sourcing-6afc23c69e9a). For example, the `accounting` integration will make use CQRS to write data to Freshbooks and read data from a cache. This introduces eventual consistency and requires the frontend's support in handling eventual consistent data intelligently.
+[CQRS allows you to scale your writes and reads separately](https://medium.com/@hugo.oliveira.rocha/what-they-dont-tell-you-about-event-sourcing-6afc23c69e9a). For example, the planned `freshbooks` accounting integration is set to make use of CQRS to write data to Freshbooks and read data from a cache. This introduces eventual consistency and requires the frontend's support in handling eventual consistent data intelligently. _Note: the freshbooks integration is out of scope for the initial mvp._
 
 In the traditional microservices model every microservice has its own database. Within
 the event sourcing model the authoritative source of truth is stored in a single message store (NATS).
