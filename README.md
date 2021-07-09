@@ -34,11 +34,11 @@ kanban or agile style board management and auxiliary services like cost estimati
 
 #### Configuration
 
-`manifests/secrets.yaml` is required. Rename `manifests/secrets.sample.yaml` and provide base64 encoded credentials for all secrets.
+`manifests/secrets.yaml` is required.
 
-`core/{service}/.env` is required for integration tests.  Rename `core/{service}/.env.sample` and provide plaintext secrets.
+`core/{service}/.env` is required for the integration tests of each service.
 
-`.gitpass` is required for private go modules but currently all repositories are public. Rename `core/.gitpass.sample` and provide a github username and access token.
+`.gitpass` is required for private go modules but currently all repositories are public.
 
 ## Developement
 
@@ -56,8 +56,8 @@ make up
 Build, Test, Linting and Formatting commands exist for each service. See `core/{service}/Makefile`
 
 ```bash
-make test # uses exported env vars
-make unit # short tests
+make test # short tests
+make e2e # uses exported env vars
 make fmt
 make lint
 make vet
