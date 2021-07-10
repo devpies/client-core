@@ -39,7 +39,7 @@ kanban or agile style board management and auxiliary services like cost estimati
 
 `manifests/secrets.yaml` is required for deployments.
 
-`core/{service}/.env` is required for the end to end testing of each service.
+`core/{service}/.env` is required for end to end testing of each service.
 
 `.gitpass` is read in the [Tiltfile](https://github.com/devpies/devpie-client-core/blob/2ddeab2eace966283f55cac58aa945a62c0c8aad/Tiltfile#L11) and passed to [Dockerfiles as build args](https://github.com/devpies/devpie-client-core/blob/2ddeab2eace966283f55cac58aa945a62c0c8aad/core/users/Dockerfile#L20). This allows services to pull private go modules but currently all repositories are public.
 
@@ -207,6 +207,11 @@ This backend should be used with the [devpie-client-app](https://github.com/ivor
 It uses [devpie-client-events](https://github.com/ivorscott/devpie-client-common-module) as a shared library to generate
 message interfaces across multiple programming languages, but the Typescript definitions in the events repository are the source of truth.
 
+
+<details>
+<summary>Read More</summary>
+<br>
+
 ## How Data Moves Through System Parts
 
 Two architectural models are adopted: _a traditional microservices model_ and
@@ -267,6 +272,8 @@ Under this model, end users send requests to Applications. Applications write me
 - View Data are not for making decisions.
 - View Data are not authoritative state, but derived from authoritative state.
 - View Data can be stored in any format or database that makes sense for the Application.
+</details>
+
 </details>
 
 ## Contribute
