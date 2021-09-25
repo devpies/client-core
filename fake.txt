@@ -1,1 +1,1 @@
-Testing GitHub App events
+*Testing GitHub App events
