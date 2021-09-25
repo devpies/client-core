@@ -4,7 +4,7 @@
 
 ## Goal
 
-Devpie Client is a business management tool for performing software development with clients. Features will include
+Devpie Client is an expiremental business management tool for performing software development with clients. Features will include
 kanban or agile style board management and auxiliary services like cost estimation, payments and more.
 
 - [See Figma design](https://www.figma.com/file/M0FVvRZWGUPWgJlby4UPjm/Devpie-Client?node-id=237%3A16)
