@@ -51,7 +51,7 @@ spec:
             - name: API_NATS_CLIENT_ID
               value: "mic-projects"
             - name: API_NATS_CLUSTER_ID
-              value: "devpie-client"
+              value: "client"
             - name: API_WEB_AUTH_M_2_M_CLIENT
               valueFrom:
                 secretKeyRef:
