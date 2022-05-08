@@ -54,11 +54,11 @@ spec:
               "2",
               "-SDV", # Enable STAN debugging output and tracing
               "-cid", # Cluster ID (default: test-cluster)
-              "devpie-client",
+              "client",
             ]
       initContainers:
         - name: schema-migration
-          image: devpies/msg-db-nats-migration:v000003
+          image: ivorscott/msg-db-nats-migration:v000003
           env:
             - name: DB_URL
               value: postgresql://postgres:postgres@nats-db-store-svc:5432/postgres?sslmode=disable
