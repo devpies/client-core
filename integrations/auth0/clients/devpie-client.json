@@ -1,6 +1,6 @@
 {
-  "name": "DevPie Client",
-  "logo_uri": "https://devpieclient.s3.amazonaws.com/brand/devpie-gravatar.png",
+  "name": "Client",
+  "logo_uri": "",
   "callbacks": [
     "##ENVIRONMENT_URL##"
   ],
