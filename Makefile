@@ -1,9 +1,9 @@
 default: up
 
 build:
-	docker build -t devpies/mic-db-users-migration:v000001 ./core/users/schema/migrations
-	docker build -t devpies/mic-db-projects-migration:v000001 ./core/projects/schema/migrations
-	docker build -t devpies/msg-db-nats-migration:v000003 ./nats/migrations
+	docker build -t ivorscott/mic-db-users-migration:v000001 ./core/users/schema/migrations
+	docker build -t ivorscott/mic-db-projects-migration:v000001 ./core/projects/schema/migrations
+	docker build -t ivorscott/msg-db-nats-migration:v000003 ./nats/migrations
 
 up: build
 	kubectl config use-context docker-desktop
