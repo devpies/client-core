@@ -1,5 +1,5 @@
 function SetUserId(user, context, callback) {
-    const namespace = 'https://client.devpie.io/claims/';
+    const namespace = 'https://client-domain.com/claims/';
     user.app_metadata = user.app_metadata || {};
 
     if(user.app_metadata.id) {
