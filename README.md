@@ -1,16 +1,13 @@
-# Devpie Client Backend
-
-![frontend preview](docs/images/demo.png)
+# Client Backend
 
 ## Goal
 
-Devpie Client is a business management tool for performing software development with clients. Features will include
-kanban or agile style board management and auxiliary services like cost estimation, payments and more.
+Client is a project management tool for performing software development with clients.
 
 - [See Figma design](https://www.figma.com/file/M0FVvRZWGUPWgJlby4UPjm/Devpie-Client?node-id=237%3A16)
-- [See Frontend repository](https://github.com/devpies/devpie-client-app)
-- [See Events repository](https://github.com/devpies/devpie-client-events)
-- [See Infrastructure repository](https://github.com/devpies/devpie-client-infra)
+- [See Frontend repository](https://github.com/ivorscott/client-app)
+- [See Events repository](https://github.com/ivorscott/client-events)
+- [See Infrastructure repository](https://github.com/ivorscott/client-infra)
 
 ### Setup
 
@@ -39,18 +36,18 @@ kanban or agile style board management and auxiliary services like cost estimati
 
 `core/{service}/.env` is required for end to end testing of each service.
 
-`.gitpass` is read in the [Tiltfile](https://github.com/devpies/devpie-client-core/blob/2ddeab2eace966283f55cac58aa945a62c0c8aad/Tiltfile#L11) and passed to [Dockerfiles as build args](https://github.com/devpies/devpie-client-core/blob/2ddeab2eace966283f55cac58aa945a62c0c8aad/core/users/Dockerfile#L20). This allows services to pull private go modules but currently all repositories are public.
+`.gitpass` is read in the Tiltfile and passed to Dockerfiles as build args. This allows services to pull private go modules but currently all repositories are public.
 
 ## Developement
 
-Run front and back ends simultaneously. For faster development we don't run the [devpie-client-app](https://github.com/ivorscott/devpie-client-app)
+Run front and back ends simultaneously. For faster development we don't run the [client-app](https://github.com/ivorscott/client-app)
 in a container/pod. However, we use [tilt.dev](https://tilt.dev) to manage kubernetes development in the backend.
 
 ```bash
-# devpie-client-app
+# client-app
 npm run dev
 
-# devpie-client-core
+# client-core
 make up
 ```
 
@@ -110,9 +107,9 @@ cd core/projects/schema
 
 migrate create -ext sql -dir migrations -seq create_table
 
-docker build -t devpies/mic-db-projects-migration:v000001 ./migrations
+docker build -t ivorscott/mic-db-projects-migration:v000001 ./migrations
 
-docker push devpies/mic-db-projects-migration:v000001
+docker push ivorscott/mic-db-projects-migration:v000001
 ```
 
 </details>
@@ -140,7 +137,7 @@ spec:
         app: mic-projects
     spec:
       containers:
-        - image: devpies/mic-projects:325b1c2
+        - image: ivorscott/mic-projects:325b1c2
           name: mic-projects
           resources:
             requests:
@@ -153,7 +150,7 @@ spec:
             - name: API_WEB_PORT
               value: ":4000"
             - name: API_WEB_CORS_ORIGINS
-              value: "https://localhost:3000, https://devpie.local"
+              value: "https://localhost:3000, https://client.local"
             - name: API_WEB_AUTH_DOMAIN
               valueFrom:
                 secretKeyRef:
@@ -182,7 +179,7 @@ spec:
               value: "devpie-client"
       initContainers:
         - name: schema-migration
-          image: devpies/mic-db-projects-migration:v000016
+          image: ivorscott/mic-db-projects-migration:v000016
           env:
             - name: DB_URL
               value: postgresql://postgres:postgres@mic-db-projects-svc:5432/postgres?sslmode=disable
