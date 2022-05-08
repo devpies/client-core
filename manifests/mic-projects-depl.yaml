@@ -12,7 +12,7 @@ spec:
         app: mic-projects
     spec:
       containers:
-        - image: devpies/mic-projects:latest
+        - image: ivorscott/mic-projects:latest
           name: mic-projects
           resources:
             requests:
@@ -25,7 +25,7 @@ spec:
             - name: API_WEB_PORT
               value: ":4000"
             - name: API_WEB_CORS_ORIGINS
-              value: "http://localhost:3000, https://devpie.local:3000"
+              value: "http://localhost:3000, https://client.local:3000"
             - name: API_WEB_AUTH_DOMAIN
               valueFrom:
                 secretKeyRef:
@@ -74,7 +74,7 @@ spec:
                   key: sendgrid-api-key
       initContainers:
         - name: schema-migration
-          image: devpies/mic-db-projects-migration:v000001
+          image: ivorscott/mic-db-projects-migration:v000001
           env:
             - name: DB_URL
               value: postgresql://postgres:postgres@mic-db-projects-svc:5432/postgres?sslmode=disable
