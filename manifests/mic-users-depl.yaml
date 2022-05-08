@@ -12,7 +12,7 @@ spec:
         app: mic-users
     spec:
       containers:
-        - image: devpies/mic-users:latest
+        - image: ivorscott/mic-users:latest
           name: mic-users
           ports:
             - containerPort: 6060
@@ -28,7 +28,7 @@ spec:
             - name: API_WEB_PORT
               value: ":4000"
             - name: API_WEB_CORS_ORIGINS
-              value: "http://localhost:3000, https://devpie.local:3000"
+              value: "http://localhost:3000, https://client.local:3000"
             - name: API_WEB_AUTH_DOMAIN
               valueFrom:
                 secretKeyRef:
@@ -54,7 +54,7 @@ spec:
             - name: API_NATS_CLIENT_ID
               value: "mic-users"
             - name: API_NATS_CLUSTER_ID
-              value: "devpie-client"
+              value: "client"
             - name: API_WEB_AUTH_M_2_M_CLIENT
               valueFrom:
                 secretKeyRef:
@@ -77,7 +77,7 @@ spec:
                   key: sendgrid-api-key
       initContainers:
         - name: schema-migration
-          image: devpies/mic-db-users-migration:v000001
+          image: ivorscott/mic-db-users-migration:v000001
           env:
             - name: DB_URL
               value: postgresql://postgres:postgres@mic-db-users-svc:5432/postgres?sslmode=disable
